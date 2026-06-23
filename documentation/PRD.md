@@ -20,8 +20,18 @@ Reroutes to Home Page on Success
 
 - Sign Up Page
 
-Email, Name, Password, Confirm Password (fails if email is taken)
+Parent/guardian Email, Display Name, Password, Confirm Password (minimum 8 characters; fails if the email is already in use). No child real name is collected. The parent/guardian email is used for Firebase Authentication and serves as the consent/contact address.
 On success, the user is automatically signed in and redirected to the Home Page.
+
+#### Privacy & Account Model
+
+The target audience is under 13, so the app follows COPPA using verifiable parental consent:
+
+- **Parental-email consent:** at sign-up the student provides a parent/guardian email, which is used to obtain consent and serves as the account's contact/identifier. No teacher or class-code provisioning is required.
+- **Minimal PII:** the only child-identifying field stored is a chosen display name. No child real name is collected.
+- **Account identifier:** each account uses the parent/guardian email for Firebase Authentication and as the consent/contact address.
+- **Passwords:** minimum 8 characters; email verification is not required for the MVP.
+- **Data access:** user profiles and stats are private to the owner (only the account owner can read them). Only lesson content is public-read — see Persistence and the security-rules note.
 
 ---
 
@@ -91,10 +101,12 @@ Here is how the lesson will be organized:
 
 - Firebase Auth — identity survives across sessions and devices
 - Firestore `progress/{userId}_{lessonId}` — lesson progress and per-step outcomes
-- Firestore `users/{userId}` — profile (name, email) and aggregate stats
-- Lesson completion history (which lessons finished, when)
-- Daily activity streaks (consecutive days with at least one completed step)
+- Firestore `users/{userId}` — profile (display name, account email) and aggregate stats: `totalPoints`, `currentStreak`, `lastActiveDate`, `completedLessons[]` (with completion timestamps)
+- Lesson completion history (which lessons finished, when), stored on the user doc
+- Daily activity streak: consecutive days (local device timezone, midnight rollover) with at least one completed step; a 1-day grace period prevents losing a streak after a single missed day
+- A lesson is complete when all graded steps are `completed`; non-graded exploration steps auto-complete on view
 - Progress requires sign-in; lesson content is readable without auth
+- **Security rules:** `users/{userId}` is readable and writable only by its owner (profiles/stats are private); `courses/**` is public-read with no client writes; `progress/{userId}_{lessonId}` is readable/writable only by that user. (`firestore.rules` enforces this — `users` read/write is owner-only.)
 
 #### Architecture
 
@@ -105,7 +117,7 @@ Here is how the lesson will be organized:
 | Content model (structured steps, not HTML) | **Satisfied** | Step `type` + `config`; validators enable fast authoring and future AI generation |
 | Frontend (render, capture, instant feedback) | **Satisfied** | Registry + graders; feedback driven by step `config` |
 | Progress and mastery layer | **Partial** | Progress per step is defined; mastery/adaptive "what's next" deferred to Nice-to-Have (MVP uses linear sequencing) |
-| Persistence (progress, streaks, history) | **Partial** | Firestore progress + auth planned; streaks and completion history called out in Important Features above |
+| Persistence (progress, streaks, history) | **Partial** | Firestore progress + auth planned; profiles/stats private (owner-only), streak rollover, completion history, and `users` doc schema now specified in Important Features (implementation pending) |
 
 **Core principle:** Lessons are ordered data (steps), not bespoke pages. Each step has a `type` and `config`. A single router renders any step via a problem-type registry.
 
@@ -131,7 +143,7 @@ ProblemRenderer → registry[step.type] → Component + grader
 | Type | Modes / notes |
 | --- | --- |
 | `article` | Markdown + reusable interactive widgets |
-| `block_problem` | `sandbox`, `fill_blank`, `bugfix` — shared block palette. Graded by the generated code's output when executed. Pure-exploration sandboxes (e.g., step 2) are not graded — they complete on Run/Next and award full points |
+| `block_problem` | `sandbox`, `fill_blank`, `bugfix` — shared block palette. Blocks compile to Python and run in Pyodide (same runtime as `python_sandbox`); graded by comparing the generated program's stdout to expected output. Pure-exploration sandboxes (e.g., step 2) are not graded — they complete on Run/Next and award full points |
 | `python_sandbox` | Starter code + test cases; graded client-side (Pyodide) by comparing stdout to expected output per test case. Inputs are supplied as predefined stdin per test case (no interactive `input()` prompts). Intro/run-only steps (e.g., step 6) are not graded |
 | `results` | Reads from progress; shows completed steps |
 
@@ -140,6 +152,13 @@ ProblemRenderer → registry[step.type] → Component + grader
 - **Block library** — shared definitions (`print`, `for_loop`, `while_loop`, `range`, etc.) referenced by block problems
 - **Article widgets** — composable demos (`loop_visualizer`, etc.) without new page types
 - **Per-scenario customization** — same type, different `config` (e.g. step 3 fill-blank vs step 4 bugfix)
+
+**Block engine**
+
+- **Schema (hybrid):** most blocks are atomic whole-line commands (`print`, `for`, `while`); complex blocks expose typed, editable slots (e.g., `range(n)`, the loop variable, a condition). Slots are typed (number, variable, block, condition) and validated by the block schema.
+- **Execution:** a block graph compiles to Python source that runs in **Pyodide** — the same runtime as `python_sandbox`. This keeps a single execution/grading path: run the generated program and compare stdout to the expected output.
+- **Pyodide loading:** lazy-loaded on the first step that needs it (block **or** Python) and cached for the rest of the session — block steps need it too, not just Python steps.
+- **Reuse into Python steps:** because block code becomes real Python, the later pure-Python steps (7-9) mirror the block versions naturally.
 
 **Lesson routing**
 
@@ -202,7 +221,7 @@ Dream: A robust acheivement system that tracks specific goals/milestones but is 
 Students between the 5th and 7th grade who are interested in learning and beginning their programming journey. Their experience with programming ranges from none at all to having played with block coding programs such as scratch or hour of code. Their hope by the end of the series of lessons on Python programming is to be able to write a basic script and have it execute from start to end without any bugs.
 
 ### User Story
-A 6th grader with no coding experience opens the site and is sent to the Home Page. Seeing that the lessons area is blurred and requires a login, they create an account by clicking on the sign in button, the sign up button on the sign in page, and create an account. Once signed up, they are automatically signed in and returned to the Home Page. They click on the Over and Over Again lesson and are sent to the first lesson in the series. Working through the lesson, they ace the first step and get full points for it. The second step is a block problem, where the user is able to manipulate the blocks, their order, and the components within some of the more complex blocks using their mouse and dragging. The blocks very clearly represent lines of python code that the user is slowly learning. Then, they make a small mistake on the second question, but thinking on the problem a bit more, they are able to independently solve the issue and get the answer, rewarding fewer points, but still more than the minimum. Then, on the third problem, they struggle a lot, getting it wrong several times in a row. After they have answered incorrectly 5 times, the points have reached the minimum amount they can award and once they complete the step, they are awarded the minimum. Now, having worked out their confusion using the interactive elements in the previous steps, they ace the rest of the block problem steps, getting the maximum points in every step. On the next step, they enter a freeform Python environment, which is familiar since the sandbox script is the exact same as the sandbox block script, but now in actual python. The user is able to solve the problems since they have experience from the block coding examples and aces all of the remaining steps. At the end of the lesson, the user gains a 1 day streak and is returned to the home page where the lesson is marked as complete and the progress bar for the lesson is completely filled.
+A 6th grader with no coding experience opens the site and is sent to the Home Page. Seeing that the lessons area is blurred and requires a login, they create an account using a parent/guardian email, a display name, and a password. Once signed up, they are automatically signed in and returned to the Home Page. They click on the Over and Over Again lesson and are sent to the first lesson in the series. Working through the lesson, they ace the first step and get full points for it. The second step is a block problem, where the user is able to manipulate the blocks, their order, and the components within some of the more complex blocks using their mouse and dragging. The blocks very clearly represent lines of python code that the user is slowly learning. Then, they make a small mistake on the second question, but thinking on the problem a bit more, they are able to independently solve the issue and get the answer, rewarding fewer points, but still more than the minimum. Then, on the third problem, they struggle a lot, getting it wrong several times in a row. After they have answered incorrectly 5 times, the points have reached the minimum amount they can award and once they complete the step, they are awarded the minimum. Now, having worked out their confusion using the interactive elements in the previous steps, they ace the rest of the block problem steps, getting the maximum points in every step. On the next step, they enter a freeform Python environment, which is familiar since the sandbox script is the exact same as the sandbox block script, but now in actual python. The user is able to solve the problems since they have experience from the block coding examples and aces all of the remaining steps. At the end of the lesson, the user gains a 1 day streak and is returned to the home page where the lesson is marked as complete and the progress bar for the lesson is completely filled.
 
 ### Tech Stack
 
@@ -230,7 +249,7 @@ A 6th grader with no coding experience opens the site and is sent to the Home Pa
 
 | Technology | Role |
 | --- | --- |
-| [Firebase Auth](https://firebase.google.com/docs/auth) | Email/password sign-up and sign-in |
+| [Firebase Auth](https://firebase.google.com/docs/auth) | Email/password auth (parent/guardian email); sign-up, sign-in, logout |
 | [Cloud Firestore](https://firebase.google.com/docs/firestore) | User profiles, lesson progress, completion history, streaks |
 | [Firebase Hosting](https://firebase.google.com/docs/hosting) | Deploy static frontend (Spark free tier) |
 | [Firebase Emulator Suite](https://firebase.google.com/docs/emulator-suite) | Local Auth + Firestore for offline dev (`npm run dev:local`) |
@@ -284,7 +303,7 @@ The app must deliver full functionality on both desktop and mobile (the persona'
 **Python sandbox on mobile**
 
 - CodeMirror 6 editor tuned for touch (larger font, no hover-only affordances).
-- Pyodide runs fully in-browser on mobile; note the larger initial download/memory cost — show a loading state and lazy-load Pyodide only on python steps.
+- Pyodide runs fully in-browser on mobile; note the larger initial download/memory cost. Show a loading state and lazy-load Pyodide on the first step that needs it (block or Python), cached for the session.
 - A simple toolbar for common symbols (`:`, `()`, indentation) to ease coding on mobile keyboards.
 
 **Results & navigation**
@@ -306,3 +325,40 @@ These refine the experience toward Brilliant's "learn by doing" philosophy. They
 - **Pyodide performance budget:** Treat in-browser Python load as a real acceptance criterion on low-end phones/Chromebooks (the target hardware). Lazy-load Pyodide only on python steps, show a loading state, cache it across steps, and define a fallback/perf budget (e.g., usable on a mid-range Chromebook within a set number of seconds).
 - **Robust empty/error states:** Handle Pyodide load failure, network loss mid-lesson, and runaway user code (an execution timeout to catch infinite loops) with clear, kid-friendly messaging.
 - **Learning analytics/telemetry:** Capture per-step drop-off and attempt data (the progress model already stores most of this) to iterate on lesson difficulty the way Brilliant does — including watching whether the points-decay model discourages guessing.
+
+### Success Metrics
+
+Primary metrics for the MVP (all derivable from existing `progress` data — no extra tracking infrastructure required):
+
+- **Lesson completion rate** — % of learners who start *Over and Over Again* and reach the results page.
+- **Per-step drop-off** — which step loses the most learners, to find friction points.
+- **Attempts per step** — average wrong attempts before completion, to flag steps that are too hard or unclear (the third block problem is the one to watch).
+
+Richer telemetry and retention/streak metrics are a post-MVP extension.
+
+### Build Plan & Acceptance Criteria
+
+Phased build order; each phase has a definition of done.
+
+1. **Auth & account model**
+   - Sign in (account email + password), sign-up (parent/guardian email, display name, password ≥ 8 chars), auto-login to Home, logout.
+   - *Done when:* a student can sign up with a parent/guardian email, is auto-signed-in, the session persists across reload, and profiles are owner-only in `firestore.rules`.
+2. **Routing & problem-type registry**
+   - `ProblemRenderer`, generic route `/lessons/:lessonId/step/:stepIndex`, Zod schemas, registry.
+   - *Done when:* an unknown `type` fails validation at build time and a stub step renders via the registry.
+3. **Article + `loop_visualizer` (lesson step 1)**
+   - Interaction-led intro: repeated-addition hook and loop visualizer.
+   - *Done when:* a learner completes step 1 by interacting (not just reading) and the checkpoint gives instant feedback.
+4. **Block engine + block problems (steps 2-5)**
+   - Block schema, palette, drag + tap-to-place, compile-to-Python, run in Pyodide, output grading.
+   - *Done when:* sandbox/fill_blank/bugfix all run on desktop and touch, and grading matches expected stdout.
+5. **Python sandbox (steps 6-9)**
+   - CodeMirror editor, Pyodide execution, stdin-based test cases, per-test feedback.
+   - *Done when:* a learner can edit, run, and pass/fail against test cases with feedback, on desktop and mobile.
+6. **Progress, gamification & results**
+   - Progress writes, points (linear decay), total score, streak, progress bars, results page.
+   - *Done when:* progress survives sessions/devices, points and streak compute correctly, and a lesson is marked complete when all graded steps are done.
+7. **Responsive & mobile pass**
+   - *Done when:* every problem type is fully playable on a phone, a tablet, and desktop.
+
+**MVP acceptance overall:** the full *Over and Over Again* lesson is completable end-to-end on desktop and mobile, with progress, points, and streak persisted.
