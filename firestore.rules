@@ -11,8 +11,7 @@ service cloud.firestore {
     }
 
     match /users/{userId} {
-      allow read: if true;
-      allow create, update: if isOwner(userId);
+      allow read, create, update: if isOwner(userId);
     }
 
     match /courses/{courseId} {
