@@ -1,0 +1,64 @@
+.app {
+  margin: 0 auto;
+  max-width: 720px;
+  padding: 4rem 1.5rem;
+}
+
+.eyebrow {
+  color: #6b4eff;
+  font-size: 0.875rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  margin: 0 0 0.5rem;
+  text-transform: uppercase;
+}
+
+h1 {
+  font-size: clamp(2rem, 5vw, 3rem);
+  margin: 0 0 0.75rem;
+}
+
+.subtitle {
+  color: #5f6470;
+  font-size: 1.125rem;
+  line-height: 1.6;
+  margin: 0 0 2rem;
+}
+
+.status-card {
+  background: #f7f5ff;
+  border: 1px solid #e4ddff;
+  border-radius: 16px;
+  padding: 1.5rem;
+}
+
+.status-card h2 {
+  font-size: 1.125rem;
+  margin: 0 0 0.5rem;
+}
+
+.status-card p {
+  color: #4b5563;
+  margin: 0 0 1rem;
+}
+
+.status-card dl {
+  display: grid;
+  gap: 0.75rem;
+  margin: 0;
+}
+
+.status-card dt {
+  color: #6b7280;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  margin-bottom: 0.125rem;
+  text-transform: uppercase;
+}
+
+.status-card dd {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.95rem;
+  margin: 0;
+}
