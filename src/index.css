@@ -1,9 +1,53 @@
 :root {
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  /* Python brand palette (from the official logo assets) */
+  --py-blue: #306998; /* Lapis Lazuli */
+  --py-blue-light: #4b8bbe; /* Cyan-Blue Azure */
+  --py-yellow: #ffd43b; /* Sunglow */
+  --py-yellow-light: #ffe873; /* Shandy */
+  --py-gray: #646464; /* Granite Gray */
+
+  /* Semantic tokens */
+  --color-primary: var(--py-blue);
+  --color-primary-hover: #27567d;
+  --color-primary-soft: #eaf1f7;
+  --color-accent: var(--py-yellow);
+  --color-accent-hover: #f5c518;
+
+  --color-text: #1f2933;
+  --color-muted: #5f6470;
+  --color-bg: #f6f9fc;
+  --color-surface: #ffffff;
+  --color-border: #e3e8ef;
+
+  --color-success: #15803d;
+  --color-success-soft: #e7f6ec;
+  --color-danger: #b42318;
+  --color-danger-soft: #fdecea;
+
+  /* Spacing scale */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.5rem;
+  --space-6: 2rem;
+  --space-8: 3rem;
+
+  /* Radii & shadows */
+  --radius-sm: 8px;
+  --radius-md: 14px;
+  --radius-lg: 22px;
+  --radius-pill: 999px;
+  --shadow-sm: 0 1px 2px rgba(16, 24, 40, 0.06), 0 1px 3px rgba(16, 24, 40, 0.1);
+  --shadow-md: 0 4px 6px -1px rgba(16, 24, 40, 0.08), 0 12px 24px -8px rgba(16, 24, 40, 0.18);
+
+  --maxw: 980px;
+
+  font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   line-height: 1.5;
   font-weight: 400;
-  color: #111827;
-  background-color: #ffffff;
+  color: var(--color-text);
+  background-color: var(--color-bg);
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
@@ -17,8 +61,127 @@
 body {
   margin: 0;
   min-height: 100vh;
+  background-color: var(--color-bg);
 }
 
 #root {
   min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+h1,
+h2,
+h3 {
+  color: var(--color-text);
+  line-height: 1.2;
+  margin: 0 0 var(--space-3);
+}
+
+h1 {
+  font-size: clamp(1.9rem, 4.5vw, 2.75rem);
+  letter-spacing: -0.02em;
+}
+
+h2 {
+  font-size: clamp(1.3rem, 3vw, 1.6rem);
+  letter-spacing: -0.01em;
+}
+
+p {
+  margin: 0 0 var(--space-4);
+}
+
+a {
+  color: var(--color-primary);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+a:hover {
+  text-decoration: underline;
+}
+
+/* Base form controls */
+input,
+button,
+textarea {
+  font: inherit;
+}
+
+label {
+  display: block;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--color-text);
+  margin-bottom: var(--space-4);
+}
+
+input[type='text'],
+input[type='email'],
+input[type='password'] {
+  display: block;
+  width: 100%;
+  margin-top: var(--space-2);
+  padding: 0.7rem 0.85rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  color: var(--color-text);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+input:focus-visible {
+  outline: none;
+  border-color: var(--py-blue-light);
+  box-shadow: 0 0 0 3px rgba(75, 139, 190, 0.25);
+}
+
+input[aria-invalid='true'] {
+  border-color: var(--color-danger);
+}
+
+/* Buttons */
+button {
+  cursor: pointer;
+  border: 1px solid transparent;
+  border-radius: var(--radius-pill);
+  padding: 0.6rem 1.25rem;
+  font-weight: 600;
+  background: var(--color-primary);
+  color: #fff;
+  transition: background 0.15s ease, transform 0.05s ease, box-shadow 0.15s ease;
+}
+
+button:hover:not(:disabled) {
+  background: var(--color-primary-hover);
+}
+
+button:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+button:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(75, 139, 190, 0.35);
+}
+
+.field-error {
+  color: var(--color-danger);
+  font-size: 0.85rem;
+  margin: calc(-1 * var(--space-2)) 0 var(--space-4);
+}
+
+.form-error {
+  background: var(--color-danger-soft);
+  color: var(--color-danger);
+  border-radius: var(--radius-sm);
+  padding: var(--space-3) var(--space-4);
+  font-size: 0.9rem;
+  margin-bottom: var(--space-4);
 }
