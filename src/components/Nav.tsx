@@ -5,12 +5,14 @@ import { useTheme } from '../theme/useTheme'
 import { AnimatedCurrency } from './AnimatedCurrency'
 import { Currency } from './Currency'
 import { StreakBadge } from './StreakBadge'
+import { StreakModal } from './StreakModal'
 
 export function Nav() {
   const { user, profile, logOut } = useAuth()
   const { theme, toggleTheme } = useTheme()
   const navigate = useNavigate()
   const [menuOpen, setMenuOpen] = useState(false)
+  const [streakOpen, setStreakOpen] = useState(false)
 
   async function handleLogout() {
     setMenuOpen(false)
@@ -26,10 +28,18 @@ export function Nav() {
 
       <div className="nav-actions">
         {user && (
-          <>
-            <StreakBadge streak={profile?.currentStreak ?? 0} />
+          <div className="nav-stats">
+            <button
+              type="button"
+              className="streak-button"
+              aria-haspopup="dialog"
+              aria-expanded={streakOpen}
+              onClick={() => setStreakOpen(true)}
+            >
+              <StreakBadge streak={profile?.currentStreak ?? 0} />
+            </button>
             <AnimatedCurrency amount={profile?.totalPoints ?? 0} />
-          </>
+          </div>
         )}
         {user ? (
           <div className="account-menu">
@@ -70,6 +80,14 @@ export function Nav() {
           </Link>
         )}
       </div>
+
+      {streakOpen && (
+        <StreakModal
+          streak={profile?.currentStreak ?? 0}
+          activeDays={profile?.activeDays ?? []}
+          onClose={() => setStreakOpen(false)}
+        />
+      )}
     </nav>
   )
 }

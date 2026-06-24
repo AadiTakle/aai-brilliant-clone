@@ -1,6 +1,5 @@
 import { describe, it, expect } from 'vitest'
 import { screen } from '@testing-library/react'
-import userEvent from '@testing-library/user-event'
 import { AppRoutes } from '../../src/app/AppRoutes'
 import { makeAuthValue, makeUser, renderWithAuth } from '../helpers/renderWithAuth'
 
@@ -15,15 +14,22 @@ describe('[Phase 2] lesson routing', () => {
     expect(screen.getByText(/step 1 of 9/i)).toBeInTheDocument()
   })
 
-  it('navigates to the next step', async () => {
-    const user = userEvent.setup()
+  it('renders the step at a later index directly', () => {
+    renderWithAuth(<AppRoutes />, {
+      authValue: makeAuthValue({ user: makeUser('Ada') }),
+      initialEntries: ['/lessons/over-and-over-again/step/1'],
+    })
+    expect(document.querySelector('[data-step-type="block_problem"]')).not.toBeNull()
+    expect(screen.getByText(/step 2 of 9/i)).toBeInTheDocument()
+  })
+
+  it('disables Next until the current step is completed', () => {
     renderWithAuth(<AppRoutes />, {
       authValue: makeAuthValue({ user: makeUser('Ada') }),
       initialEntries: ['/lessons/over-and-over-again/step/0'],
     })
-    await user.click(screen.getByRole('button', { name: /next/i }))
-    expect(document.querySelector('[data-step-type="block_problem"]')).not.toBeNull()
-    expect(screen.getByText(/step 2 of 9/i)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /next/i })).toBeDisabled()
+    expect(screen.getByText(/complete this step to unlock/i)).toBeInTheDocument()
   })
 
   it('shows a not-found message for an out-of-range index', () => {

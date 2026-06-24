@@ -25,6 +25,13 @@ export interface BlockSlot {
   name: string
   kind: SlotKind
   label?: string
+  /**
+   * For expression slots: a value block to auto-insert when the parent is
+   * created, so simple values (a loop variable, range bounds, a printed string)
+   * are editable inline rather than dragged. Slots without a default stay empty
+   * and act as drop targets for nesting functions/statements.
+   */
+  defaultChild?: CodeNode
 }
 
 export interface CodeNode {
@@ -71,7 +78,9 @@ export const BLOCK_DEFS: Record<string, BlockDef> = {
     label: 'for ⬡ in ⬡:',
     fields: [],
     slots: [
-      { name: 'var', kind: 'expression', label: 'variable' },
+      // The loop variable auto-fills with `i` (edit inline, not drag).
+      { name: 'var', kind: 'expression', label: 'variable', defaultChild: { type: 'var', fields: { name: 'i' } } },
+      // The sequence is the only nesting slot: drop a range()/other here.
       { name: 'iter', kind: 'expression', label: 'sequence' },
       { name: 'body', kind: 'statement', label: 'repeat' },
     ],
@@ -88,7 +97,14 @@ export const BLOCK_DEFS: Record<string, BlockDef> = {
     category: 'statement',
     label: 'print(⬡)',
     fields: [],
-    slots: [{ name: 'value', kind: 'expression', label: 'value' }],
+    slots: [
+      {
+        name: 'value',
+        kind: 'expression',
+        label: 'value',
+        defaultChild: { type: 'str', fields: { value: 'Hello!' } },
+      },
+    ],
     toCode: (_node, ctx) => [`print(${ctx.expr('value')})`],
   },
   range_call: {
@@ -97,8 +113,8 @@ export const BLOCK_DEFS: Record<string, BlockDef> = {
     label: 'range(⬡, ⬡)',
     fields: [],
     slots: [
-      { name: 'start', kind: 'expression', label: 'start' },
-      { name: 'stop', kind: 'expression', label: 'stop' },
+      { name: 'start', kind: 'expression', label: 'start', defaultChild: { type: 'num', fields: { value: 0 } } },
+      { name: 'stop', kind: 'expression', label: 'stop', defaultChild: { type: 'num', fields: { value: 5 } } },
     ],
     toExpr: (_node, ctx) => `range(${ctx.expr('start')}, ${ctx.expr('stop')})`,
   },

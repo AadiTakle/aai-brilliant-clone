@@ -41,8 +41,10 @@ export interface RewardInput {
 }
 
 /**
- * Atomically updates the user's lifetime total, daily streak, and completed
- * lessons. Run inside a transaction so concurrent step completions are safe.
+ * Atomically updates the user's lifetime total, and — only when an entire
+ * lesson is completed — their daily streak, weekly activity, and completed
+ * lessons. Points accrue per step; the streak only advances on full completion.
+ * Run inside a transaction so concurrent step completions are safe.
  */
 export async function commitStepRewards(
   db: Firestore,
@@ -55,24 +57,30 @@ export async function commitStepRewards(
     const data = snap.data() as Partial<UserProfile> | undefined
 
     const totalPoints = (data?.totalPoints ?? 0) + input.pointsDelta
-    const streak = updateStreak(
-      {
-        currentStreak: data?.currentStreak ?? 0,
-        lastActiveDate: data?.lastActiveDate ?? null,
-      },
-      input.today,
-    )
 
+    // Streak, weekly activity, and completed lessons only change once the
+    // learner finishes the whole lesson.
+    let currentStreak = data?.currentStreak ?? 0
+    let lastActiveDate = data?.lastActiveDate ?? null
     const completedLessons = new Set(data?.completedLessons ?? [])
-    if (input.lessonComplete) completedLessons.add(input.lessonId)
+    const activeDays = new Set(data?.activeDays ?? [])
+
+    if (input.lessonComplete) {
+      const streak = updateStreak({ currentStreak, lastActiveDate }, input.today)
+      currentStreak = streak.currentStreak
+      lastActiveDate = streak.lastActiveDate
+      completedLessons.add(input.lessonId)
+      activeDays.add(input.today)
+    }
 
     tx.set(
       ref,
       {
         totalPoints,
-        currentStreak: streak.currentStreak,
-        lastActiveDate: streak.lastActiveDate,
+        currentStreak,
+        lastActiveDate,
         completedLessons: [...completedLessons],
+        activeDays: [...activeDays],
       },
       { merge: true },
     )

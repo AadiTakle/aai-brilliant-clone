@@ -34,7 +34,26 @@ Run `npm run dev:local` (emulators + Vite) and sign in with a test account.
 
 ## E. Streak flame
 - Nav, account menu, and results show a flame + day count.
-- Streak 0 → dark/“cold” flame showing `0`. Streak ≥ 1 → blue flame with the count.
+- Streak 0 → dark/“cold” flame showing `0`. Streak ≥ 1 → **orange** flame with the count.
+- Streak/Sparks sit just left of the account button and are large enough to read at a glance.
+- Streak only advances when you finish an ENTIRE lesson (not on a single step).
+- Clicking the streak opens a modal with this week's days (Sun–Sat); days you completed
+  a lesson are filled, today is outlined.
+
+## J. Step gating
+- On any step, **Next** is disabled until you finish that step (article panels done,
+  graded problem passed, or sandbox run). A hint explains it's locked.
+
+## K. Typography
+- App uses a bolder/bubblier type (Fredoka headings, Nunito body).
+
+## L. Code editor dark mode
+- In dark mode the Python editor switches to a dark CodeMirror theme (no white-on-white).
+
+## M. Blocks: auto-filled values
+- New blocks come pre-filled: `for i in …`, `range(0, 5)`, `print("Hello!")`. Edit those
+  values inline. The only drop slots are nesting ones (the loop's sequence, the body).
+- Block lines never wrap; the workspace scrolls horizontally for long lines.
 
 ## F. Home "Review lesson"
 - A not-started lesson shows **Start lesson**; a partially done one **Continue lesson**;

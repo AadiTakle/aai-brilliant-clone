@@ -6,6 +6,7 @@ import type { PythonSandboxConfig } from './schema'
 import { runPython } from '../../lib/pyodide/runner'
 import { gradePython, isPythonGraded, type PythonGradeResult } from '../../lib/grading/pythonGrader'
 import { diagnose } from '../../lib/grading/diagnostics'
+import { useResolvedTheme } from '../../theme/useResolvedTheme'
 
 // Symbols/snippets that are awkward to type on mobile keyboards.
 const SYMBOLS: { label: string; insert: string }[] = [
@@ -29,6 +30,7 @@ interface BodyProps {
 
 function PythonSandboxBody({ title, config, onComplete, onGraded }: BodyProps) {
   const editorRef = useRef<ReactCodeMirrorRef>(null)
+  const theme = useResolvedTheme()
   const [code, setCode] = useState(config.starterCode)
   const [running, setRunning] = useState(false)
   const [output, setOutput] = useState<string | null>(null)
@@ -91,6 +93,7 @@ function PythonSandboxBody({ title, config, onComplete, onGraded }: BodyProps) {
           ref={editorRef}
           value={code}
           height="180px"
+          theme={theme === 'dark' ? 'dark' : 'light'}
           extensions={[python()]}
           onChange={(value) => setCode(value)}
           basicSetup={{ lineNumbers: true, foldGutter: false }}

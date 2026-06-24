@@ -13,6 +13,8 @@ export interface UserProfile {
   currentStreak: number
   lastActiveDate: string | null
   completedLessons: string[]
+  /** ISO (YYYY-MM-DD) days on which the learner completed a full lesson. */
+  activeDays: string[]
 }
 
 export interface UserProfileDoc extends UserProfile {
@@ -35,6 +37,7 @@ export async function createUserProfile(
     currentStreak: 0,
     lastActiveDate: null,
     completedLessons: [],
+    activeDays: [],
     createdAt: serverTimestamp(),
   }
   await setDoc(doc(db, 'users', uid), profile, { merge: true })

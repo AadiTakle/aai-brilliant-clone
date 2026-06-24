@@ -55,14 +55,19 @@ function ValueLeaf({ block, def, dispatch }: { block: WorkspaceBlock; def: Block
     )
   }
 
+  const isNumber = f.kind === 'number'
   return (
     <span className={`chip chip-${def.type}`}>
       <input
         className="chip-input"
-        type={f.kind === 'number' ? 'number' : 'text'}
+        // Numbers use a text input (with numeric keypad) because the `size`
+        // attribute is ignored on type="number", which makes those fields huge.
+        type="text"
+        inputMode={isNumber ? 'numeric' : 'text'}
+        pattern={isNumber ? '[0-9]*' : undefined}
         aria-label={f.label ?? f.name}
         value={value}
-        size={Math.max(value.length, 2)}
+        size={Math.max(value.length, 3)}
         onChange={(e) => onChange(e.target.value)}
       />
     </span>
@@ -133,6 +138,9 @@ export function BlockView({ block, heldType, dispatch }: BlockViewProps) {
 
   if (def.category === 'value') {
     const isLeaf = def.slots.length === 0
+    // Leaf values (number/text/variable) are edited inline and are part of the
+    // parent block, so they have no remove button. Composite values (range)
+    // can be removed to clear the slot back to a drop target.
     return (
       <span className="value-block" data-block-type={block.type}>
         {isLeaf ? (
@@ -140,9 +148,9 @@ export function BlockView({ block, heldType, dispatch }: BlockViewProps) {
         ) : (
           <span className="value-inline">
             <InlineTokens block={block} def={def} heldType={heldType} dispatch={dispatch} />
+            <RemoveButton id={block.id} dispatch={dispatch} />
           </span>
         )}
-        <RemoveButton id={block.id} dispatch={dispatch} />
       </span>
     )
   }

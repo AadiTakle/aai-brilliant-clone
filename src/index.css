@@ -1,7 +1,13 @@
+@import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@400;600;700;800;900&display=swap');
+
 :root {
   /* Python brand blue is the single accent in a deliberately limited palette. */
   --py-blue: #306998;
   --py-blue-light: #4b8bbe;
+
+  /* Bolder, bubblier type: Fredoka for display, Nunito for body. */
+  --font-body: 'Nunito', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-display: 'Fredoka', 'Nunito', system-ui, sans-serif;
 
   /* Semantic tokens — light theme */
   --color-primary: var(--py-blue);
@@ -21,6 +27,8 @@
   --color-surface: #ffffff;
   --color-surface-2: #f1f4f8;
   --color-border: #e3e8ef;
+  /* Translucent scrim for overlays (e.g. the login gate) — theme-aware. */
+  --color-scrim: rgba(246, 249, 252, 0.6);
 
   --color-success: #1f9d57;
   --color-success-soft: #e7f6ec;
@@ -30,7 +38,7 @@
   /* Feature accents */
   --color-currency: #306998;
   --streak-cold: #1f2933;
-  --streak-hot: #4b8bbe;
+  --streak-hot: #f97316;
 
   /* Spacing scale */
   --space-1: 0.25rem;
@@ -53,7 +61,7 @@
 
   --maxw: 980px;
 
-  font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-family: var(--font-body);
   line-height: 1.5;
   font-weight: 400;
   color: var(--color-text);
@@ -76,6 +84,7 @@
   --color-surface: #1a2129;
   --color-surface-2: #222b35;
   --color-border: #2b3440;
+  --color-scrim: rgba(15, 20, 25, 0.6);
 
   --color-success: #3fbb74;
   --color-success-soft: #16301f;
@@ -84,7 +93,7 @@
 
   --color-currency: #6bb0e6;
   --streak-cold: #9aa3af;
-  --streak-hot: #6bb0e6;
+  --streak-hot: #fb923c;
 
   color-scheme: dark;
 }
@@ -109,6 +118,8 @@ h1,
 h2,
 h3 {
   color: var(--color-text);
+  font-family: var(--font-display);
+  font-weight: 600;
   line-height: 1.2;
   margin: 0 0 var(--space-3);
 }

@@ -36,7 +36,9 @@ export function makeBlock(type: string, idSeed?: string): WorkspaceBlock {
   })
   const slots: Record<string, WorkspaceBlock[]> = {}
   def?.slots.forEach((s) => {
-    slots[s.name] = []
+    // Auto-fill value slots (e.g. loop variable, range bounds) so they are
+    // editable inline; nesting slots start empty and act as drop targets.
+    slots[s.name] = s.defaultChild ? hydrate([s.defaultChild]) : []
   })
   const id = idSeed ?? `b${++idCounter}`
   return { id, type, fields, slots }

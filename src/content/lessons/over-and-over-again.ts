@@ -53,8 +53,8 @@ export const overAndOverAgain = {
       config: {
         mode: 'sandbox',
         prompt:
-          'Snap blocks together to make a loop. Drop value blocks into the empty slots, then press Run. Try different numbers!',
-        palette: ['for_each', 'print', 'range_call', 'num', 'str', 'var'],
+          'Snap blocks together to make a loop. Drop a range into the loop\u2019s empty slot, edit the numbers, then press Run. Try different values!',
+        palette: ['for_each', 'print', 'range_call'],
         initial: [],
       },
     },
@@ -66,7 +66,7 @@ export const overAndOverAgain = {
       config: {
         mode: 'fill_blank',
         prompt: 'Drop a print block into the loop body so it prints "Hello!" five times.',
-        palette: ['print', 'str'],
+        palette: ['print'],
         initial: [
           {
             type: 'for_each',
@@ -129,7 +129,7 @@ export const overAndOverAgain = {
       config: {
         mode: 'fill_blank',
         prompt: 'Build a loop from scratch that prints "Hi" exactly 4 times.',
-        palette: ['for_each', 'print', 'range_call', 'num', 'str', 'var'],
+        palette: ['for_each', 'print', 'range_call'],
         initial: [],
         expectedOutput: 'Hi\nHi\nHi\nHi',
         requireLoop: true,

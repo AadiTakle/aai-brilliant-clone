@@ -3,7 +3,7 @@ import { getStep } from '../content/loader'
 import { ProblemRenderer } from '../problem-types/ProblemRenderer'
 import { ProgressBar } from '../components/ProgressBar'
 import { useLessonProgress } from '../lib/progress/useLessonProgress'
-import { completedCount, isLessonComplete } from '../lib/progress/model'
+import { completedCount, getStepProgress, isLessonComplete } from '../lib/progress/model'
 
 export function LessonPage() {
   const params = useParams()
@@ -26,6 +26,8 @@ export function LessonPage() {
   const { lesson, step, isFirst, isLast, total } = location
   const done = completedCount(progress, lesson)
   const lessonComplete = isLessonComplete(progress, lesson)
+  // Learners can only advance once they have passed/finished the current step.
+  const currentComplete = getStepProgress(progress, step.id).status === 'completed'
 
   const handleGraded = (result: { correct: boolean }) => {
     void recordStep(step, result.correct)
@@ -75,11 +77,19 @@ export function LessonPage() {
             Finish
           </Link>
         ) : (
-          <button type="button" onClick={() => goTo(index + 1)}>
+          <button
+            type="button"
+            onClick={() => goTo(index + 1)}
+            disabled={!currentComplete}
+            title={currentComplete ? undefined : 'Finish this step to continue'}
+          >
             Next
           </button>
         )}
       </div>
+      {!currentComplete && !isLast && (
+        <p className="lesson-gate-hint">Complete this step to unlock the next one.</p>
+      )}
     </main>
   )
 }
