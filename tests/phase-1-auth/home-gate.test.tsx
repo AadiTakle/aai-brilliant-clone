@@ -21,6 +21,6 @@ describe('[Phase 1] HomePage login gate', () => {
     })
     expect(screen.queryByRole('region', { name: /login required/i })).not.toBeInTheDocument()
     expect(container.querySelector('.lessons-grid.is-blurred')).toBeNull()
-    expect(screen.getByRole('link', { name: /start lesson/i })).toBeInTheDocument()
+    expect(screen.getAllByRole('link', { name: /start lesson/i }).length).toBeGreaterThan(0)
   })
 })

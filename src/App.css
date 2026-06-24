@@ -678,6 +678,233 @@ button.ghost:hover:not(:disabled) {
   color: var(--color-success);
 }
 
+/* --- Phase 9 curriculum widgets --- */
+.widget-function-machine {
+  text-align: center;
+}
+.fm-box {
+  display: inline-block;
+  border: 2px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  padding: var(--space-2) var(--space-3);
+  margin: var(--space-2) auto;
+  background: var(--color-surface);
+}
+.fm-box.is-running {
+  border-color: var(--color-accent);
+}
+.fm-input,
+.fm-output {
+  font-size: 0.95rem;
+}
+.fm-controls,
+.vb-controls,
+.rm-controls,
+.bv-controls,
+.ct-controls {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+  margin-top: var(--space-2);
+}
+
+.vb-box {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  border: 2px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  padding: var(--space-2) var(--space-3);
+  margin: var(--space-2) 0;
+  min-width: 5rem;
+}
+.vb-name {
+  font-size: 0.8rem;
+  color: var(--color-text-muted);
+}
+.vb-value {
+  font-family: var(--font-mono, monospace);
+  font-weight: 600;
+}
+
+.ts-items {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.ts-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 0.3rem 0;
+}
+.ts-item.is-correct {
+  color: var(--color-success);
+}
+.ts-item.is-wrong {
+  color: var(--color-danger, #c0392b);
+}
+.ts-buttons button.is-selected {
+  border-color: var(--color-accent);
+}
+.ts-label {
+  min-width: 5rem;
+}
+
+.rm-readout.is-multiple,
+.rm-flag {
+  color: var(--color-accent);
+  font-weight: 600;
+}
+
+.mg-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 0.25rem;
+  max-width: 18rem;
+}
+.mg-cell {
+  padding: 0.4rem 0;
+}
+.mg-cell.is-on {
+  background: var(--color-accent);
+  color: #fff;
+  border-color: var(--color-accent);
+}
+.mg-cell.is-wrong {
+  background: var(--color-danger, #c0392b);
+  border-color: var(--color-danger, #c0392b);
+}
+
+.ce-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+.ce-result .is-true {
+  color: var(--color-success);
+}
+.ce-result .is-false {
+  color: var(--color-danger, #c0392b);
+}
+
+.bv-branches {
+  list-style: none;
+  margin: var(--space-2) 0;
+  padding: 0;
+}
+.bv-branch {
+  padding: 0.25rem 0.5rem;
+  border-left: 3px solid transparent;
+}
+.bv-branch.is-active {
+  border-left-color: var(--color-accent);
+  background: var(--color-surface);
+  font-weight: 600;
+}
+
+.ct-code {
+  margin: 0 0 var(--space-2);
+}
+.ct-line {
+  display: flex;
+  gap: var(--space-2);
+  padding: 0 0.25rem;
+}
+.ct-line.is-current {
+  background: var(--color-surface);
+  outline: 2px solid var(--color-accent);
+}
+.ct-gutter {
+  color: var(--color-text-muted);
+  user-select: none;
+  min-width: 1.5rem;
+  text-align: right;
+}
+.ct-panels {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-3);
+}
+.ct-panel-label {
+  margin: 0 0 0.25rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--color-text-muted);
+}
+.ct-vars ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+/* Parsons problem: bank + solution columns of reorderable code lines. */
+.parsons-layout {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-3);
+  align-items: start;
+}
+@media (max-width: 640px) {
+  .parsons-layout {
+    grid-template-columns: 1fr;
+  }
+}
+.parsons-bank,
+.parsons-solution {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  padding: var(--space-2);
+  min-height: 4rem;
+}
+.parsons-zone-label {
+  margin: 0 0 var(--space-2);
+  font-weight: 600;
+  font-size: 0.85rem;
+  color: var(--color-text-muted);
+}
+.parsons-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.parsons-line {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  padding: 0.3rem 0.5rem;
+  margin: 0.3rem 0;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  font-family: var(--font-mono, monospace);
+  white-space: nowrap;
+}
+.parsons-line code {
+  background: none;
+  padding: 0;
+}
+.parsons-controls {
+  display: inline-flex;
+  gap: 0.15rem;
+}
+.parsons-controls button,
+.parsons-add {
+  padding: 0.1rem 0.4rem;
+  font-size: 0.85rem;
+  line-height: 1.4;
+}
+
+/* Inline operator dropdown (compare / binop). Sized to its content, not full width. */
+.chip .chip-select {
+  width: auto;
+  min-width: 0;
+  padding: 0.05rem 0.2rem;
+  cursor: pointer;
+}
+
 .expr-slot.is-filled {
   display: inline-flex;
   align-items: center;

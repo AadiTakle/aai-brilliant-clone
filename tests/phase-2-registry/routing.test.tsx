@@ -11,7 +11,7 @@ describe('[Phase 2] lesson routing', () => {
       initialEntries: ['/lessons/over-and-over-again/step/0'],
     })
     expect(document.querySelector('[data-step-type="article"]')).not.toBeNull()
-    expect(screen.getByText(/step 1 of 9/i)).toBeInTheDocument()
+    expect(screen.getByText(/step 1 of \d+/i)).toBeInTheDocument()
   })
 
   it('renders the step at a later index directly', () => {
@@ -20,7 +20,7 @@ describe('[Phase 2] lesson routing', () => {
       initialEntries: ['/lessons/over-and-over-again/step/1'],
     })
     expect(document.querySelector('[data-step-type="block_problem"]')).not.toBeNull()
-    expect(screen.getByText(/step 2 of 9/i)).toBeInTheDocument()
+    expect(screen.getByText(/step 2 of \d+/i)).toBeInTheDocument()
   })
 
   it('disables Next until the current step is completed', () => {

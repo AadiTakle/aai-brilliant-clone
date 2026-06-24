@@ -5,6 +5,7 @@ import type { StepRenderProps } from '../types'
 import type { PythonSandboxConfig } from './schema'
 import { runPython } from '../../lib/pyodide/runner'
 import { gradePython, isPythonGraded, type PythonGradeResult } from '../../lib/grading/pythonGrader'
+import { constructHint } from '../../lib/grading/constructCheck'
 import { diagnose } from '../../lib/grading/diagnostics'
 import { useResolvedTheme } from '../../theme/useResolvedTheme'
 
@@ -58,6 +59,7 @@ function PythonSandboxBody({ title, config, onComplete, onGraded }: BodyProps) {
       if (graded) {
         const result = await gradePython(code, config.testCases, undefined, {
           requireLoop: config.requireLoop,
+          requiredConstructs: config.requiredConstructs,
         })
         setGrade(result)
         onGraded?.({ correct: result.passed })
@@ -145,7 +147,7 @@ function PythonSandboxBody({ title, config, onComplete, onGraded }: BodyProps) {
                     </p>
                   )}
                   {(() => {
-                    const hint = diagnose({ expected: r.expected, actual: r.actual, stderr: r.error })
+                    const hint = diagnose({ expected: r.expected, actual: r.actual, stderr: r.error, source: code })
                     return hint ? <p className="test-result-hint">Hint: {hint}</p> : null
                   })()}
                   {r.feedback && <p className="test-result-feedback">{r.feedback}</p>}
@@ -159,8 +161,8 @@ function PythonSandboxBody({ title, config, onComplete, onGraded }: BodyProps) {
           >
             {grade.passed
               ? 'All tests passed!'
-              : grade.loopMissing
-                ? 'Right answer, but solve it with a loop instead of writing each line.'
+              : grade.missingConstructs.length > 0
+                ? constructHint(grade.missingConstructs)
                 : 'Some tests failed — tweak your code and run again.'}
           </p>
         </div>

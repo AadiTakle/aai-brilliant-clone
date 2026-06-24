@@ -1,4 +1,4 @@
-import { blockCategory, getBlockDef, type BlockDef, type BlockSlot } from '../../lib/blocks/definitions'
+import { blockCategory, getBlockDef, type BlockDef, type BlockField, type BlockSlot } from '../../lib/blocks/definitions'
 import type { WorkspaceAction, WorkspaceBlock } from '../../lib/blocks/workspace'
 import { DropZone } from './DropZone'
 
@@ -74,28 +74,97 @@ function ValueLeaf({ block, def, dispatch }: { block: WorkspaceBlock; def: Block
   )
 }
 
-/** Renders a block's label, interleaving its `⬡` placeholders with expression slots. */
+/** An inline editable field that is part of a block, e.g. the operator dropdown. */
+function FieldControl({
+  block,
+  field,
+  dispatch,
+}: {
+  block: WorkspaceBlock
+  field: BlockField
+  dispatch: BlockViewProps['dispatch']
+}) {
+  const value = String(block.fields[field.name] ?? field.default)
+  if (field.kind === 'select') {
+    return (
+      <span className="chip chip-op">
+        <select
+          className="chip-input chip-select"
+          aria-label={field.label ?? field.name}
+          value={value}
+          onChange={(e) =>
+            dispatch({ kind: 'set-field', id: block.id, field: field.name, value: e.target.value })
+          }
+        >
+          {(field.options ?? []).map((opt) => (
+            <option key={opt} value={opt}>
+              {opt}
+            </option>
+          ))}
+        </select>
+      </span>
+    )
+  }
+  const isNumber = field.kind === 'number'
+  return (
+    <span className="chip chip-field">
+      <input
+        className="chip-input"
+        type="text"
+        inputMode={isNumber ? 'numeric' : 'text'}
+        aria-label={field.label ?? field.name}
+        value={value}
+        size={Math.max(value.length, 3)}
+        onChange={(e) =>
+          dispatch({
+            kind: 'set-field',
+            id: block.id,
+            field: field.name,
+            value: isNumber ? Number(e.target.value) : e.target.value,
+          })
+        }
+      />
+    </span>
+  )
+}
+
+/**
+ * Renders a block's label, interleaving `⬡` (expression slots, in slot order)
+ * and `◇` (inline fields, in field order) placeholders with the literal text.
+ */
 function InlineTokens({ block, def, heldType, dispatch }: { block: WorkspaceBlock; def: BlockDef; heldType: string | null; dispatch: BlockViewProps['dispatch'] }) {
   const exprSlots = def.slots.filter((s) => s.kind === 'expression')
-  const parts = def.label.split('⬡')
   const heldIsValue = heldType ? blockCategory(heldType) === 'value' : false
+  const tokens = def.label.split(/([⬡◇])/)
+  let slotIdx = 0
+  let fieldIdx = 0
 
   return (
     <>
-      {parts.map((text, i) => (
-        <span key={i} className="inline-part">
-          {text && <span className="tok">{text}</span>}
-          {i < exprSlots.length && (
+      {tokens.map((token, i) => {
+        if (token === '⬡') {
+          const slot = exprSlots[slotIdx++]
+          return slot ? (
             <ExpressionSlot
+              key={i}
               parent={block}
-              slot={exprSlots[i]}
+              slot={slot}
               heldType={heldType}
               heldIsValue={heldIsValue}
               dispatch={dispatch}
             />
-          )}
-        </span>
-      ))}
+          ) : null
+        }
+        if (token === '◇') {
+          const f = def.fields[fieldIdx++]
+          return f ? <FieldControl key={i} block={block} field={f} dispatch={dispatch} /> : null
+        }
+        return token ? (
+          <span key={i} className="tok">
+            {token}
+          </span>
+        ) : null
+      })}
     </>
   )
 }

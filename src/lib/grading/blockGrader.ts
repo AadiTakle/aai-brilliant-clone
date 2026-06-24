@@ -1,6 +1,7 @@
 import { compileToSource } from '../blocks/compiler'
 import type { CodeNode } from '../blocks/definitions'
-import { usesLoopNode } from '../blocks/analysis'
+import { missingConstructsNode } from '../blocks/analysis'
+import { effectiveConstructs, type Construct } from './constructCheck'
 import { runPython, type PythonRunner } from '../pyodide/runner'
 import { gradeOutput, type GradeResult } from './outputGrader'
 
@@ -22,7 +23,9 @@ export async function runBlocks(
 export interface BlockGradeResult extends GradeResult {
   source: string
   error: string | null
-  /** True when the output is right but the program is missing a required loop. */
+  /** Required constructs missing even though the output is correct. */
+  missingConstructs: Construct[]
+  /** True when the output is right but the program is missing a required loop (legacy). */
   loopMissing: boolean
 }
 
@@ -30,12 +33,20 @@ export async function gradeBlocks(
   program: CodeNode[],
   expectedOutput: string,
   runner: PythonRunner = runPython,
-  options: { requireLoop?: boolean } = {},
+  options: { requireLoop?: boolean; requiredConstructs?: Construct[] } = {},
 ): Promise<BlockGradeResult> {
   const { source, stdout, error } = await runBlocks(program, runner)
   const graded = gradeOutput(stdout, expectedOutput)
   const outputCorrect = graded.correct && !error
-  const loopMissing = Boolean(options.requireLoop) && outputCorrect && !usesLoopNode(program)
-  // A runtime error never counts as correct; nor does a missing required loop.
-  return { ...graded, correct: outputCorrect && !loopMissing, source, error, loopMissing }
+  const required = effectiveConstructs(options)
+  const missingConstructs = outputCorrect ? missingConstructsNode(program, required) : []
+  // A runtime error never counts as correct; nor does a missing required construct.
+  return {
+    ...graded,
+    correct: outputCorrect && missingConstructs.length === 0,
+    source,
+    error,
+    missingConstructs,
+    loopMissing: missingConstructs.includes('loop'),
+  }
 }

@@ -14,9 +14,11 @@ export const EMPTY_SLOT = '__?__'
 
 export interface BlockField {
   name: string
-  kind: 'text' | 'number'
+  kind: 'text' | 'number' | 'select'
   label?: string
   default: string | number
+  /** Allowed values for `kind: 'select'` (rendered as an inline dropdown). */
+  options?: string[]
 }
 
 export type SlotKind = 'statement' | 'expression'
@@ -68,8 +70,24 @@ export function pyString(text: string): string {
   return JSON.stringify(String(text))
 }
 
+const BODY_INDENT = '    '
+
+/**
+ * Attach an indented body to a header line. Each child line is indented by 4
+ * spaces; because every nesting block does this to its own body, deeper nesting
+ * (for -> if -> print) composes to the correct cumulative indentation. An empty
+ * body becomes `pass` so the program still parses.
+ */
+function withBody(header: string, body: string[]): string[] {
+  const indented = body.length > 0 ? body.map((l) => BODY_INDENT + l) : [BODY_INDENT + 'pass']
+  return [header, ...indented]
+}
+
 /** Block types that introduce a loop (used by the "must use a loop" check). */
 export const LOOP_TYPES = new Set<string>(['for_each'])
+
+/** Block types that introduce a conditional (used by the "must use an if" check). */
+export const CONDITIONAL_TYPES = new Set<string>(['if_block'])
 
 export const BLOCK_DEFS: Record<string, BlockDef> = {
   for_each: {
@@ -84,13 +102,7 @@ export const BLOCK_DEFS: Record<string, BlockDef> = {
       { name: 'iter', kind: 'expression', label: 'sequence' },
       { name: 'body', kind: 'statement', label: 'repeat' },
     ],
-    toCode: (_node, ctx) => {
-      const v = ctx.expr('var')
-      const seq = ctx.expr('iter')
-      const body = ctx.statements('body')
-      const indented = body.length > 0 ? body.map((l) => `    ${l}`) : ['    pass']
-      return [`for ${v} in ${seq}:`, ...indented]
-    },
+    toCode: (_node, ctx) => withBody(`for ${ctx.expr('var')} in ${ctx.expr('iter')}:`, ctx.statements('body')),
   },
   print: {
     type: 'print',
@@ -118,6 +130,81 @@ export const BLOCK_DEFS: Record<string, BlockDef> = {
     ],
     toExpr: (_node, ctx) => `range(${ctx.expr('start')}, ${ctx.expr('stop')})`,
   },
+  range_n: {
+    type: 'range_n',
+    category: 'value',
+    label: 'range(⬡)',
+    fields: [],
+    slots: [{ name: 'stop', kind: 'expression', label: 'count', defaultChild: { type: 'num', fields: { value: 5 } } }],
+    toExpr: (_node, ctx) => `range(${ctx.expr('stop')})`,
+  },
+  assign: {
+    type: 'assign',
+    category: 'statement',
+    label: '⬡ = ⬡',
+    fields: [],
+    slots: [
+      // The name being set auto-fills with `x` (edit inline).
+      { name: 'target', kind: 'expression', label: 'name', defaultChild: { type: 'var', fields: { name: 'x' } } },
+      // The value can be a literal (auto-filled) or a dropped expression.
+      { name: 'value', kind: 'expression', label: 'value', defaultChild: { type: 'num', fields: { value: 0 } } },
+    ],
+    toCode: (_node, ctx) => [`${ctx.expr('target')} = ${ctx.expr('value')}`],
+  },
+  if_block: {
+    type: 'if_block',
+    category: 'statement',
+    label: 'if ⬡:',
+    fields: [],
+    slots: [
+      // The condition is the nesting slot: drop a comparison here.
+      { name: 'cond', kind: 'expression', label: 'condition' },
+      { name: 'body', kind: 'statement', label: 'then' },
+    ],
+    toCode: (_node, ctx) => withBody(`if ${ctx.expr('cond')}:`, ctx.statements('body')),
+  },
+  elif_block: {
+    type: 'elif_block',
+    category: 'statement',
+    label: 'elif ⬡:',
+    fields: [],
+    slots: [
+      { name: 'cond', kind: 'expression', label: 'condition' },
+      { name: 'body', kind: 'statement', label: 'then' },
+    ],
+    toCode: (_node, ctx) => withBody(`elif ${ctx.expr('cond')}:`, ctx.statements('body')),
+  },
+  else_block: {
+    type: 'else_block',
+    category: 'statement',
+    label: 'else:',
+    fields: [],
+    slots: [{ name: 'body', kind: 'statement', label: 'otherwise' }],
+    toCode: (_node, ctx) => withBody('else:', ctx.statements('body')),
+  },
+  compare: {
+    type: 'compare',
+    category: 'value',
+    // `◇` marks the inline operator dropdown; `⬡` marks each expression slot.
+    label: '⬡ ◇ ⬡',
+    fields: [{ name: 'op', kind: 'select', label: 'operator', default: '==', options: ['==', '!=', '<', '>', '<=', '>='] }],
+    slots: [
+      { name: 'left', kind: 'expression', label: 'left', defaultChild: { type: 'var', fields: { name: 'i' } } },
+      { name: 'right', kind: 'expression', label: 'right', defaultChild: { type: 'num', fields: { value: 0 } } },
+    ],
+    toExpr: (node, ctx) => `${ctx.expr('left')} ${field(node, 'op', '==')} ${ctx.expr('right')}`,
+  },
+  binop: {
+    type: 'binop',
+    category: 'value',
+    label: '⬡ ◇ ⬡',
+    fields: [{ name: 'op', kind: 'select', label: 'operator', default: '%', options: ['%', '+', '-', '*', '//'] }],
+    slots: [
+      { name: 'left', kind: 'expression', label: 'left', defaultChild: { type: 'var', fields: { name: 'i' } } },
+      { name: 'right', kind: 'expression', label: 'right', defaultChild: { type: 'num', fields: { value: 3 } } },
+    ],
+    toExpr: (node, ctx) => `${ctx.expr('left')} ${field(node, 'op', '%')} ${ctx.expr('right')}`,
+  },
   num: {
     type: 'num',
     category: 'value',
@@ -132,7 +219,9 @@ export const BLOCK_DEFS: Record<string, BlockDef> = {
     label: 'text',
     fields: [{ name: 'value', kind: 'text', label: 'text', default: 'Hello!' }],
     slots: [],
-    toExpr: (node) => pyString(String(field(node, 'value', 'Hello!'))),
+    // Unlike numbers/names, an empty string "" is a valid, meaningful value
+    // (e.g. label = ""), so only fall back when the field is truly absent.
+    toExpr: (node) => pyString(node.fields?.value === undefined ? 'Hello!' : String(node.fields.value)),
   },
   var: {
     type: 'var',

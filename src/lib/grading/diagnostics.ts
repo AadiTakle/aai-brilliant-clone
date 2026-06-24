@@ -10,6 +10,8 @@ export interface DiagnoseInput {
   expected?: string
   actual?: string
   stderr?: string | null
+  /** The learner's source, used to refine syntax-error hints. */
+  source?: string
 }
 
 function toLines(text: string | undefined): string[] {
@@ -18,7 +20,40 @@ function toLines(text: string | undefined): string[] {
   return normalized === '' ? [] : normalized.split('\n')
 }
 
-function diagnoseError(stderr: string): string | null {
+// Header keywords whose lines must end with a colon.
+const HEADER_RE = /^\s*(if|elif|else|for|while|def)\b/
+
+/** Refine a syntax error using the learner's source. */
+function diagnoseSource(source: string): string | null {
+  const lines = source.split('\n')
+
+  // A block header (if/for/else/...) missing its trailing colon.
+  for (const line of lines) {
+    const code = line.replace(/#.*$/, '').replace(/\s+$/, '')
+    if (code && HEADER_RE.test(code) && !code.endsWith(':')) {
+      return 'Add a colon (:) at the end of the line — `if`, `for`, `else` and friends end with `:`.'
+    }
+  }
+
+  // A single `=` used where a comparison `==` was meant, inside a condition.
+  for (const line of lines) {
+    const code = line.replace(/#.*$/, '')
+    if (/^\s*(if|elif|while)\b/.test(code) && /[^=!<>]=[^=]/.test(code)) {
+      return 'Use `==` to compare values. A single `=` stores a value; `==` asks "are these equal?".'
+    }
+  }
+
+  // `elif`/`else` with no `if` to attach to.
+  const hasIf = lines.some((l) => /^\s*if\b/.test(l))
+  const hasElse = lines.some((l) => /^\s*(elif|else)\b/.test(l))
+  if (hasElse && !hasIf) {
+    return '`elif` and `else` must come right after an `if` block.'
+  }
+
+  return null
+}
+
+function diagnoseError(stderr: string, source?: string): string | null {
   const e = stderr.toLowerCase()
 
   if (e.includes('unterminated string') || e.includes('eol while scanning string literal')) {
@@ -29,14 +64,24 @@ function diagnoseError(stderr: string): string | null {
     e.includes('expected an indented block') ||
     e.includes('unexpected indent')
   ) {
-    return 'Check your indentation — the lines inside a loop must be indented (4 spaces).'
+    return 'Check your indentation — the lines inside a loop or an if must be indented (4 spaces).'
+  }
+  if (e.includes("expected ':'")) {
+    return 'Add a colon (:) at the end of the line — `if`, `for`, `else` and friends end with `:`.'
+  }
+  if (e.includes('not supported between instances of')) {
+    return "You're comparing different types — make sure both sides are numbers (use int(...)) or both are text."
   }
   const nameMatch = stderr.match(/name '([^']+)' is not defined/)
   if (nameMatch) {
     return `Python doesn't recognize \`${nameMatch[1]}\`. Check the spelling, or define it before you use it.`
   }
-  if (e.includes('syntaxerror')) {
-    return 'There is a syntax error — check for a missing colon (:) at the end of the for-line or a missing parenthesis.'
+  if (e.includes('syntaxerror') || e.includes('invalid syntax')) {
+    if (source) {
+      const fromSource = diagnoseSource(source)
+      if (fromSource) return fromSource
+    }
+    return 'There is a syntax error — check for a missing colon (:) at the end of a header line or a missing parenthesis.'
   }
   return null
 }
@@ -75,7 +120,7 @@ function diagnoseOutput(expected: string, actual: string): string | null {
 
 export function diagnose(input: DiagnoseInput): string | null {
   if (input.stderr) {
-    const fromError = diagnoseError(input.stderr)
+    const fromError = diagnoseError(input.stderr, input.source)
     if (fromError) return fromError
   }
   if (input.expected !== undefined && input.actual !== undefined) {

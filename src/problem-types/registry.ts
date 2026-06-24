@@ -7,6 +7,8 @@ import { BlockProblemStep } from './block_problem/BlockProblemStep'
 import { blockProblemConfigSchema } from './block_problem/schema'
 import { PythonSandboxStep } from './python_sandbox/PythonSandboxStep'
 import { pythonSandboxConfigSchema } from './python_sandbox/schema'
+import { ParsonsProblemStep } from './parsons_problem/ParsonsProblemStep'
+import { parsonsProblemConfigSchema } from './parsons_problem/schema'
 
 export interface RegistryEntry {
   component: StepComponent
@@ -19,6 +21,7 @@ export const problemRegistry: Record<StepType, RegistryEntry> = {
   article: { component: ArticleStep, configSchema: articleConfigSchema },
   block_problem: { component: BlockProblemStep, configSchema: blockProblemConfigSchema },
   python_sandbox: { component: PythonSandboxStep, configSchema: pythonSandboxConfigSchema },
+  parsons_problem: { component: ParsonsProblemStep, configSchema: parsonsProblemConfigSchema },
 }
 
 export function getRenderer(type: string): RegistryEntry | null {

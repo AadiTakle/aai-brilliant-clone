@@ -25,7 +25,11 @@ export const blockProblemConfigSchema = z.object({
   initial: z.array(blockInstanceSchema).default([]),
   expectedOutput: z.string().optional(),
   // When true, a correct output only passes if the program actually uses a loop.
+  // Kept as a convenience alias of requiredConstructs: ['loop'].
   requireLoop: z.boolean().default(false),
+  // A correct output only passes if the program actually uses each construct
+  // (prevents hardcoding / faking the output).
+  requiredConstructs: z.array(z.enum(['loop', 'modulo', 'conditional'])).default([]),
 })
 
 export type BlockProblemConfig = z.infer<typeof blockProblemConfigSchema>

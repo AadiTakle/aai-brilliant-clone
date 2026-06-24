@@ -2,8 +2,9 @@ import { z } from 'zod'
 import { articleConfigSchema } from '../problem-types/article/schema'
 import { blockProblemConfigSchema } from '../problem-types/block_problem/schema'
 import { pythonSandboxConfigSchema } from '../problem-types/python_sandbox/schema'
+import { parsonsProblemConfigSchema } from '../problem-types/parsons_problem/schema'
 
-export const STEP_TYPES = ['article', 'block_problem', 'python_sandbox'] as const
+export const STEP_TYPES = ['article', 'block_problem', 'python_sandbox', 'parsons_problem'] as const
 export type StepType = (typeof STEP_TYPES)[number]
 
 const baseStepFields = {
@@ -35,10 +36,17 @@ export const pythonSandboxStepSchema = z.object({
   config: pythonSandboxConfigSchema,
 })
 
+export const parsonsProblemStepSchema = z.object({
+  ...baseStepFields,
+  type: z.literal('parsons_problem'),
+  config: parsonsProblemConfigSchema,
+})
+
 export const stepSchema = z.discriminatedUnion('type', [
   articleStepSchema,
   blockProblemStepSchema,
   pythonSandboxStepSchema,
+  parsonsProblemStepSchema,
 ])
 
 export const lessonSchema = z.object({

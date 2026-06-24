@@ -54,7 +54,7 @@ export const overAndOverAgain = {
         mode: 'sandbox',
         prompt:
           'Snap blocks together to make a loop. Drop a range into the loop\u2019s empty slot, edit the numbers, then press Run. Try different values!',
-        palette: ['for_each', 'print', 'range_call'],
+        palette: ['for_each', 'print', 'range_call', 'range_n'],
         initial: [],
       },
     },
@@ -122,6 +122,54 @@ export const overAndOverAgain = {
       },
     },
     {
+      id: 'count-with-n',
+      type: 'block_problem',
+      title: 'Count up to n',
+      graded: true,
+      config: {
+        mode: 'fill_blank',
+        prompt:
+          'The box n is 5. This loop counts from 1 up to n using range(1, n + 1). The n + 1 is computed first, so the loop includes n. Run to print 1 through 5.',
+        palette: [],
+        requireLoop: true,
+        initial: [
+          {
+            type: 'assign',
+            slots: {
+              target: [{ type: 'var', fields: { name: 'n' } }],
+              value: [{ type: 'num', fields: { value: 5 } }],
+            },
+          },
+          {
+            type: 'for_each',
+            slots: {
+              var: [{ type: 'var', fields: { name: 'i' } }],
+              iter: [
+                {
+                  type: 'range_call',
+                  slots: {
+                    start: [{ type: 'num', fields: { value: 1 } }],
+                    stop: [
+                      {
+                        type: 'binop',
+                        fields: { op: '+' },
+                        slots: {
+                          left: [{ type: 'var', fields: { name: 'n' } }],
+                          right: [{ type: 'num', fields: { value: 1 } }],
+                        },
+                      },
+                    ],
+                  },
+                },
+              ],
+              body: [{ type: 'print', slots: { value: [{ type: 'var', fields: { name: 'i' } }] } }],
+            },
+          },
+        ],
+        expectedOutput: '1\n2\n3\n4\n5',
+      },
+    },
+    {
       id: 'loop-it-yourself',
       type: 'block_problem',
       title: 'Loop it yourself',
@@ -129,7 +177,7 @@ export const overAndOverAgain = {
       config: {
         mode: 'fill_blank',
         prompt: 'Build a loop from scratch that prints "Hi" exactly 4 times.',
-        palette: ['for_each', 'print', 'range_call'],
+        palette: ['for_each', 'print', 'range_call', 'range_n'],
         initial: [],
         expectedOutput: 'Hi\nHi\nHi\nHi',
         requireLoop: true,

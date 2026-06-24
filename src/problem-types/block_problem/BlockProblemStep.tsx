@@ -14,7 +14,8 @@ import {
   type DropTarget,
 } from '../../lib/blocks/workspace'
 import { blockCategory, getBlockDef } from '../../lib/blocks/definitions'
-import { usesLoopNode } from '../../lib/blocks/analysis'
+import { missingConstructsNode } from '../../lib/blocks/analysis'
+import { constructHint, effectiveConstructs, type Construct } from '../../lib/grading/constructCheck'
 import { Palette } from './Palette'
 import { WorkspaceView } from './WorkspaceView'
 
@@ -31,7 +32,7 @@ function BlockProblemBody({ title, config, onComplete, onGraded }: BodyProps) {
   const [output, setOutput] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [grade, setGrade] = useState<GradeResult | null>(null)
-  const [loopMissing, setLoopMissing] = useState(false)
+  const [missing, setMissing] = useState<Construct[]>([])
 
   const graded = config.mode !== 'sandbox' && config.expectedOutput !== undefined
 
@@ -62,7 +63,7 @@ function BlockProblemBody({ title, config, onComplete, onGraded }: BodyProps) {
     setRunning(true)
     setError(null)
     setGrade(null)
-    setLoopMissing(false)
+    setMissing([])
     const source = compileToSource(state.program)
     try {
       const result = await runPython(source)
@@ -71,10 +72,14 @@ function BlockProblemBody({ title, config, onComplete, onGraded }: BodyProps) {
       if (graded && config.expectedOutput !== undefined) {
         const g = gradeOutput(result.stdout, config.expectedOutput)
         const outputCorrect = g.correct && !result.error
-        const missingLoop = config.requireLoop && outputCorrect && !usesLoopNode(state.program)
-        const correct = outputCorrect && !missingLoop
+        const required = effectiveConstructs({
+          requireLoop: config.requireLoop,
+          requiredConstructs: config.requiredConstructs,
+        })
+        const missingConstructs = outputCorrect ? missingConstructsNode(state.program, required) : []
+        const correct = outputCorrect && missingConstructs.length === 0
         setGrade({ ...g, correct })
-        setLoopMissing(missingLoop)
+        setMissing(missingConstructs)
         onGraded?.({ correct })
         if (correct) onComplete?.()
       } else {
@@ -139,11 +144,11 @@ function BlockProblemBody({ title, config, onComplete, onGraded }: BodyProps) {
       {graded && grade && !error && (
         grade.correct ? (
           <p role="status" className="feedback feedback-correct">
-            Correct! Your loop produced the expected output.
+            Correct! Your program produced the expected output.
           </p>
-        ) : loopMissing ? (
+        ) : missing.length > 0 ? (
           <p role="alert" className="feedback feedback-incorrect">
-            Right answer, but do it with a loop instead of placing each line by hand.
+            {constructHint(missing)}
           </p>
         ) : (
           <p role="alert" className="feedback feedback-incorrect">
@@ -152,11 +157,12 @@ function BlockProblemBody({ title, config, onComplete, onGraded }: BodyProps) {
         )
       )}
 
-      {graded && !grade?.correct && !loopMissing && (() => {
+      {graded && !grade?.correct && missing.length === 0 && (() => {
         const hint = diagnose({
           expected: config.expectedOutput,
           actual: output ?? '',
           stderr: error,
+          source: compileToSource(state.program),
         })
         return hint ? <p className="feedback-hint">Hint: {hint}</p> : null
       })()}

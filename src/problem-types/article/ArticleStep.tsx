@@ -5,15 +5,43 @@ import type { Activity, Panel } from './schema'
 import { Checkpoint } from './Checkpoint'
 import { RepeatedAddition } from './widgets/RepeatedAddition'
 import { LoopVisualizer } from './widgets/LoopVisualizer'
+import { FunctionMachine } from './widgets/FunctionMachine'
+import { VariableBox } from './widgets/VariableBox'
+import { TypeSorter } from './widgets/TypeSorter'
+import { RemainderMachine } from './widgets/RemainderMachine'
+import { MultiplesGrid } from './widgets/MultiplesGrid'
+import { ComparisonExplorer } from './widgets/ComparisonExplorer'
+import { BranchVisualizer } from './widgets/BranchVisualizer'
+import { CodeTracer } from './widgets/CodeTracer'
 
 function ActivityView({ activity, onComplete }: { activity: Activity; onComplete: () => void }) {
   if (activity.kind === 'checkpoint') {
     return <Checkpoint block={activity} onComplete={onComplete} />
   }
-  if (activity.widget === 'repeated_addition') {
-    return <RepeatedAddition config={activity.config} onComplete={onComplete} />
+  switch (activity.widget) {
+    case 'repeated_addition':
+      return <RepeatedAddition config={activity.config} onComplete={onComplete} />
+    case 'loop_visualizer':
+      return <LoopVisualizer config={activity.config} onComplete={onComplete} />
+    case 'function_machine':
+      return <FunctionMachine config={activity.config} onComplete={onComplete} />
+    case 'variable_box':
+      return <VariableBox config={activity.config} onComplete={onComplete} />
+    case 'type_sorter':
+      return <TypeSorter config={activity.config} onComplete={onComplete} />
+    case 'remainder_machine':
+      return <RemainderMachine config={activity.config} onComplete={onComplete} />
+    case 'multiples_grid':
+      return <MultiplesGrid config={activity.config} onComplete={onComplete} />
+    case 'comparison_explorer':
+      return <ComparisonExplorer config={activity.config} onComplete={onComplete} />
+    case 'branch_visualizer':
+      return <BranchVisualizer config={activity.config} onComplete={onComplete} />
+    case 'code_tracer':
+      return <CodeTracer config={activity.config} onComplete={onComplete} />
+    default:
+      return null
   }
-  return <LoopVisualizer config={activity.config} onComplete={onComplete} />
 }
 
 interface ArticleBodyProps {
