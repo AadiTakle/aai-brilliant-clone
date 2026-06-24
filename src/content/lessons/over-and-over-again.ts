@@ -104,5 +104,69 @@ export const overAndOverAgain = {
         expectedOutput: 'Hi\nHi\nHi\nHi',
       },
     },
+    {
+      id: 'now-you-type-it',
+      type: 'python_sandbox',
+      title: 'Now type it yourself',
+      graded: false,
+      config: {
+        prompt: 'Here is the same loop as real Python code. Press Run to see it work.',
+        starterCode: 'for i in range(3):\n    print("Hello!")\n',
+        testCases: [],
+      },
+    },
+    {
+      id: 'count-1-to-5',
+      type: 'python_sandbox',
+      title: 'Count to five',
+      graded: true,
+      config: {
+        prompt: 'Write a loop that prints the numbers 1, 2, 3, 4, 5 — each on its own line.',
+        starterCode: 'for i in range(1, 6):\n    print(i)\n',
+        testCases: [
+          {
+            stdin: '',
+            expectedStdout: '1\n2\n3\n4\n5',
+            feedback: 'range(1, 6) gives 1, 2, 3, 4, 5 — it stops before 6.',
+          },
+        ],
+      },
+    },
+    {
+      id: 'repeat-n-times',
+      type: 'python_sandbox',
+      title: 'Repeat n times',
+      graded: true,
+      config: {
+        prompt: 'Read a number n with input(), then print "Hi" that many times.',
+        starterCode: 'n = int(input())\n# print "Hi" n times\n',
+        testCases: [
+          { stdin: '3', expectedStdout: 'Hi\nHi\nHi' },
+          {
+            stdin: '1',
+            expectedStdout: 'Hi',
+            feedback: 'Use range(n) so the loop runs exactly n times.',
+          },
+        ],
+      },
+    },
+    {
+      id: 'count-to-n',
+      type: 'python_sandbox',
+      title: 'Count to n',
+      graded: true,
+      config: {
+        prompt: 'Read a number n with input(), then print every number from 1 to n.',
+        starterCode: 'n = int(input())\n',
+        testCases: [
+          { stdin: '3', expectedStdout: '1\n2\n3' },
+          {
+            stdin: '5',
+            expectedStdout: '1\n2\n3\n4\n5',
+            feedback: 'range(1, n + 1) counts from 1 up to and including n.',
+          },
+        ],
+      },
+    },
   ],
 }

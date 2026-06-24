@@ -12,10 +12,12 @@ export function makeUser(displayName: string | null, uid = 'test-uid'): User {
 export function makeAuthValue(overrides: Partial<AuthContextValue> = {}): AuthContextValue {
   return {
     user: null,
+    profile: null,
     loading: false,
     signUp: vi.fn(async () => {}),
     signIn: vi.fn(async () => {}),
     logOut: vi.fn(async () => {}),
+    refreshProfile: vi.fn(async () => {}),
     ...overrides,
   }
 }

@@ -1,6 +1,7 @@
 import { Route, Routes } from 'react-router-dom'
 import { HomePage } from '../pages/HomePage'
 import { LessonPage } from '../pages/LessonPage'
+import { ResultsPage } from '../pages/ResultsPage'
 import { SignInPage } from '../auth/SignInPage'
 import { SignUpPage } from '../auth/SignUpPage'
 import { RequireAuth } from '../auth/RequireAuth'
@@ -16,6 +17,14 @@ export function AppRoutes() {
         element={
           <RequireAuth>
             <LessonPage />
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/lessons/:lessonId/results"
+        element={
+          <RequireAuth>
+            <ResultsPage />
           </RequireAuth>
         }
       />

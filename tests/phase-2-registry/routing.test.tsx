@@ -12,7 +12,7 @@ describe('[Phase 2] lesson routing', () => {
       initialEntries: ['/lessons/over-and-over-again/step/0'],
     })
     expect(document.querySelector('[data-step-type="article"]')).not.toBeNull()
-    expect(screen.getByText(/step 1 of 5/i)).toBeInTheDocument()
+    expect(screen.getByText(/step 1 of 9/i)).toBeInTheDocument()
   })
 
   it('navigates to the next step', async () => {
@@ -23,7 +23,7 @@ describe('[Phase 2] lesson routing', () => {
     })
     await user.click(screen.getByRole('button', { name: /next/i }))
     expect(document.querySelector('[data-step-type="block_problem"]')).not.toBeNull()
-    expect(screen.getByText(/step 2 of 5/i)).toBeInTheDocument()
+    expect(screen.getByText(/step 2 of 9/i)).toBeInTheDocument()
   })
 
   it('shows a not-found message for an out-of-range index', () => {

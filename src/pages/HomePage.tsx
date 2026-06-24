@@ -1,20 +1,38 @@
+import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../auth/useAuth'
-
-interface LessonSummary {
-  id: string
-  title: string
-  totalSteps: number
-}
-
-// Placeholder catalog for Phase 1. The content loader (Phase 2) and progress
-// (Phase 6) will replace this with real data.
-const LESSONS: LessonSummary[] = [
-  { id: 'over-and-over-again', title: 'Over and Over Again', totalSteps: 9 },
-]
+import { db } from '../firebase/config'
+import { listLessons } from '../content/loader'
+import { loadLessonProgress } from '../lib/progress/store'
+import { completedCount, type LessonProgress } from '../lib/progress/model'
+import { ProgressBar } from '../components/ProgressBar'
 
 export function HomePage() {
   const { user } = useAuth()
+  const lessons = listLessons()
+  const [progressByLesson, setProgressByLesson] = useState<Record<string, LessonProgress>>({})
+
+  useEffect(() => {
+    let cancelled = false
+    async function load() {
+      if (!user) {
+        setProgressByLesson({})
+        return
+      }
+      const entries = await Promise.all(
+        lessons.map(async (l) => [l.id, await loadLessonProgress(db, user.uid, l.id)] as const),
+      )
+      if (cancelled) return
+      const map: Record<string, LessonProgress> = {}
+      for (const [id, p] of entries) if (p) map[id] = p
+      setProgressByLesson(map)
+    }
+    load()
+    return () => {
+      cancelled = true
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user])
 
   return (
     <main className="home">
@@ -25,19 +43,30 @@ export function HomePage() {
 
       <section className="lessons" aria-label="Lessons">
         <div className={user ? 'lessons-grid' : 'lessons-grid is-blurred'} aria-hidden={!user}>
-          {LESSONS.map((lesson) => (
-            <article key={lesson.id} className="lesson-card">
-              <h2>{lesson.title}</h2>
-              <p>{lesson.totalSteps} steps</p>
-              {user ? (
-                <Link to={`/lessons/${lesson.id}/step/0`} className="lesson-start">
-                  Start lesson
-                </Link>
-              ) : (
-                <span className="lesson-start is-disabled">Start lesson</span>
-              )}
-            </article>
-          ))}
+          {lessons.map((lesson) => {
+            const progress = progressByLesson[lesson.id]
+            const done = progress ? completedCount(progress, lesson) : 0
+            const total = lesson.steps.length
+            const resumeIndex = progress?.currentStepIndex ?? 0
+            const started = done > 0 || resumeIndex > 0
+            return (
+              <article key={lesson.id} className="lesson-card">
+                <h2>{lesson.title}</h2>
+                <p>{total} steps</p>
+                {user && <ProgressBar completed={done} total={total} />}
+                {user ? (
+                  <Link
+                    to={`/lessons/${lesson.id}/step/${started ? resumeIndex : 0}`}
+                    className="lesson-start"
+                  >
+                    {started ? 'Continue lesson' : 'Start lesson'}
+                  </Link>
+                ) : (
+                  <span className="lesson-start is-disabled">Start lesson</span>
+                )}
+              </article>
+            )
+          })}
         </div>
 
         {!user && (

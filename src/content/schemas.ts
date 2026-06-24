@@ -13,6 +13,8 @@ const baseStepFields = {
   graded: z.boolean().default(false),
   // Base points before decay (Phase 6).
   points: z.number().int().positive().default(100),
+  // Floor that linear decay cannot go below (Phase 6).
+  minPoints: z.number().int().nonnegative().default(20),
 }
 
 export const articleStepSchema = z.object({

@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../auth/useAuth'
 
 export function Nav() {
-  const { user, logOut } = useAuth()
+  const { user, profile, logOut } = useAuth()
   const navigate = useNavigate()
   const [menuOpen, setMenuOpen] = useState(false)
 
@@ -20,6 +20,11 @@ export function Nav() {
       </Link>
 
       <div className="nav-actions">
+        {user && (
+          <span className="nav-points" title="Total points">
+            {profile?.totalPoints ?? 0} pts
+          </span>
+        )}
         {user ? (
           <div className="account-menu">
             <button
@@ -33,6 +38,8 @@ export function Nav() {
             </button>
             {menuOpen && (
               <div role="menu" className="account-dropdown">
+                <p className="account-stat">{profile?.totalPoints ?? 0} total points</p>
+                <p className="account-stat">{profile?.currentStreak ?? 0}-day streak</p>
                 <button type="button" role="menuitem" onClick={handleLogout}>
                   Logout
                 </button>
