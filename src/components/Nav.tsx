@@ -1,9 +1,14 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../auth/useAuth'
+import { useTheme } from '../theme/useTheme'
+import { AnimatedCurrency } from './AnimatedCurrency'
+import { Currency } from './Currency'
+import { StreakBadge } from './StreakBadge'
 
 export function Nav() {
   const { user, profile, logOut } = useAuth()
+  const { theme, toggleTheme } = useTheme()
   const navigate = useNavigate()
   const [menuOpen, setMenuOpen] = useState(false)
 
@@ -21,9 +26,10 @@ export function Nav() {
 
       <div className="nav-actions">
         {user && (
-          <span className="nav-points" title="Total points">
-            {profile?.totalPoints ?? 0} pts
-          </span>
+          <>
+            <StreakBadge streak={profile?.currentStreak ?? 0} />
+            <AnimatedCurrency amount={profile?.totalPoints ?? 0} />
+          </>
         )}
         {user ? (
           <div className="account-menu">
@@ -38,8 +44,20 @@ export function Nav() {
             </button>
             {menuOpen && (
               <div role="menu" className="account-dropdown">
-                <p className="account-stat">{profile?.totalPoints ?? 0} total points</p>
-                <p className="account-stat">{profile?.currentStreak ?? 0}-day streak</p>
+                <p className="account-stat">
+                  <Currency amount={profile?.totalPoints ?? 0} /> Sparks
+                </p>
+                <p className="account-stat">
+                  <StreakBadge streak={profile?.currentStreak ?? 0} /> day streak
+                </p>
+                <button
+                  type="button"
+                  role="menuitemcheckbox"
+                  aria-checked={theme === 'dark'}
+                  onClick={toggleTheme}
+                >
+                  {theme === 'dark' ? 'Light mode' : 'Dark mode'}
+                </button>
                 <button type="button" role="menuitem" onClick={handleLogout}>
                   Logout
                 </button>

@@ -75,13 +75,17 @@ function insertInto(
   target: DropTarget,
   newBlock: WorkspaceBlock,
 ): WorkspaceBlock[] {
+  // The root program is a statement list: append.
   if (target.parentId === null) {
     return [...blocks, newBlock]
   }
   return blocks.map((b) => {
     if (b.id === target.parentId) {
-      const slot = b.slots[target.slot] ?? []
-      return { ...b, slots: { ...b.slots, [target.slot]: [...slot, newBlock] } }
+      const slotDef = getBlockDef(b.type)?.slots.find((s) => s.name === target.slot)
+      const existing = b.slots[target.slot] ?? []
+      // Expression slots hold exactly one child (replace); statement slots append.
+      const next = slotDef?.kind === 'expression' ? [newBlock] : [...existing, newBlock]
+      return { ...b, slots: { ...b.slots, [target.slot]: next } }
     }
     return { ...b, slots: mapSlots(b.slots, (children) => insertInto(children, target, newBlock)) }
   })

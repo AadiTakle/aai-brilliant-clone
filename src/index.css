@@ -1,28 +1,36 @@
 :root {
-  /* Python brand palette (from the official logo assets) */
-  --py-blue: #306998; /* Lapis Lazuli */
-  --py-blue-light: #4b8bbe; /* Cyan-Blue Azure */
-  --py-yellow: #ffd43b; /* Sunglow */
-  --py-yellow-light: #ffe873; /* Shandy */
-  --py-gray: #646464; /* Granite Gray */
+  /* Python brand blue is the single accent in a deliberately limited palette. */
+  --py-blue: #306998;
+  --py-blue-light: #4b8bbe;
 
-  /* Semantic tokens */
+  /* Semantic tokens — light theme */
   --color-primary: var(--py-blue);
   --color-primary-hover: #27567d;
   --color-primary-soft: #eaf1f7;
-  --color-accent: var(--py-yellow);
-  --color-accent-hover: #f5c518;
+  --color-on-primary: #ffffff;
+
+  /* Accent maps onto the primary so the palette stays limited (single accent). */
+  --color-accent: var(--color-primary);
+  --color-accent-hover: var(--color-primary-hover);
+  --color-accent-soft: var(--color-primary-soft);
+  --color-on-accent: var(--color-on-primary);
 
   --color-text: #1f2933;
   --color-muted: #5f6470;
-  --color-bg: #f6f9fc;
+  --color-bg: #f7f8fa;
   --color-surface: #ffffff;
+  --color-surface-2: #f1f4f8;
   --color-border: #e3e8ef;
 
-  --color-success: #15803d;
+  --color-success: #1f9d57;
   --color-success-soft: #e7f6ec;
   --color-danger: #b42318;
   --color-danger-soft: #fdecea;
+
+  /* Feature accents */
+  --color-currency: #306998;
+  --streak-cold: #1f2933;
+  --streak-hot: #4b8bbe;
 
   /* Spacing scale */
   --space-1: 0.25rem;
@@ -33,13 +41,15 @@
   --space-6: 2rem;
   --space-8: 3rem;
 
-  /* Radii & shadows */
-  --radius-sm: 8px;
-  --radius-md: 14px;
-  --radius-lg: 22px;
+  /* Radii — rounded edges used sparingly. */
+  --radius-sm: 6px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
   --radius-pill: 999px;
-  --shadow-sm: 0 1px 2px rgba(16, 24, 40, 0.06), 0 1px 3px rgba(16, 24, 40, 0.1);
-  --shadow-md: 0 4px 6px -1px rgba(16, 24, 40, 0.08), 0 12px 24px -8px rgba(16, 24, 40, 0.18);
+
+  /* Flat design: no shadows. */
+  --shadow-sm: none;
+  --shadow-md: none;
 
   --maxw: 980px;
 
@@ -52,6 +62,31 @@
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+:root[data-theme='dark'] {
+  --color-primary: #4b8bbe;
+  --color-primary-hover: #5a99cc;
+  --color-primary-soft: #1e2c38;
+  --color-on-primary: #0f1419;
+
+  --color-text: #e5e9f0;
+  --color-muted: #9aa3af;
+  --color-bg: #0f1419;
+  --color-surface: #1a2129;
+  --color-surface-2: #222b35;
+  --color-border: #2b3440;
+
+  --color-success: #3fbb74;
+  --color-success-soft: #16301f;
+  --color-danger: #f0746a;
+  --color-danger-soft: #3a1f1f;
+
+  --color-currency: #6bb0e6;
+  --streak-cold: #9aa3af;
+  --streak-hot: #6bb0e6;
+
+  color-scheme: dark;
 }
 
 * {
@@ -145,11 +180,11 @@ input[aria-invalid='true'] {
 button {
   cursor: pointer;
   border: 1px solid transparent;
-  border-radius: var(--radius-pill);
+  border-radius: var(--radius-sm);
   padding: 0.6rem 1.25rem;
   font-weight: 600;
   background: var(--color-primary);
-  color: #fff;
+  color: var(--color-on-primary);
   transition: background 0.15s ease, transform 0.05s ease, box-shadow 0.15s ease;
 }
 

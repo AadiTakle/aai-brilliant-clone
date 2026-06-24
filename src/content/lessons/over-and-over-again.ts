@@ -53,8 +53,8 @@ export const overAndOverAgain = {
       config: {
         mode: 'sandbox',
         prompt:
-          'Drag a loop and a print block into the program, set the count, then press Run. Try different numbers!',
-        palette: ['for_range', 'print_text', 'print_var'],
+          'Snap blocks together to make a loop. Drop value blocks into the empty slots, then press Run. Try different numbers!',
+        palette: ['for_each', 'print', 'range_call', 'num', 'str', 'var'],
         initial: [],
       },
     },
@@ -65,10 +65,28 @@ export const overAndOverAgain = {
       graded: true,
       config: {
         mode: 'fill_blank',
-        prompt: 'Place a print block inside the loop so it prints "Hello!" five times.',
-        palette: ['print_text'],
-        initial: [{ type: 'for_range', fields: { var: 'i', count: 5 }, slots: { body: [] } }],
+        prompt: 'Drop a print block into the loop body so it prints "Hello!" five times.',
+        palette: ['print', 'str'],
+        initial: [
+          {
+            type: 'for_each',
+            slots: {
+              var: [{ type: 'var', fields: { name: 'i' } }],
+              iter: [
+                {
+                  type: 'range_call',
+                  slots: {
+                    start: [{ type: 'num', fields: { value: 0 } }],
+                    stop: [{ type: 'num', fields: { value: 5 } }],
+                  },
+                },
+              ],
+              body: [],
+            },
+          },
+        ],
         expectedOutput: 'Hello!\nHello!\nHello!\nHello!\nHello!',
+        requireLoop: true,
       },
     },
     {
@@ -79,16 +97,28 @@ export const overAndOverAgain = {
       config: {
         mode: 'bugfix',
         prompt:
-          'This loop should print the numbers 0, 1, 2, 3, 4 — but it stops too early. Fix the count.',
+          'This loop should print the numbers 0, 1, 2, 3, 4 — but it stops too early. Fix the stop value.',
         palette: [],
         initial: [
           {
-            type: 'for_range',
-            fields: { var: 'i', count: 3 },
-            slots: { body: [{ type: 'print_var', fields: { var: 'i' } }] },
+            type: 'for_each',
+            slots: {
+              var: [{ type: 'var', fields: { name: 'i' } }],
+              iter: [
+                {
+                  type: 'range_call',
+                  slots: {
+                    start: [{ type: 'num', fields: { value: 0 } }],
+                    stop: [{ type: 'num', fields: { value: 3 } }],
+                  },
+                },
+              ],
+              body: [{ type: 'print', slots: { value: [{ type: 'var', fields: { name: 'i' } }] } }],
+            },
           },
         ],
         expectedOutput: '0\n1\n2\n3\n4',
+        requireLoop: true,
       },
     },
     {
@@ -99,9 +129,10 @@ export const overAndOverAgain = {
       config: {
         mode: 'fill_blank',
         prompt: 'Build a loop from scratch that prints "Hi" exactly 4 times.',
-        palette: ['for_range', 'print_text', 'print_var'],
+        palette: ['for_each', 'print', 'range_call', 'num', 'str', 'var'],
         initial: [],
         expectedOutput: 'Hi\nHi\nHi\nHi',
+        requireLoop: true,
       },
     },
     {
@@ -130,6 +161,7 @@ export const overAndOverAgain = {
             feedback: 'range(1, 6) gives 1, 2, 3, 4, 5 — it stops before 6.',
           },
         ],
+        requireLoop: true,
       },
     },
     {
@@ -148,6 +180,7 @@ export const overAndOverAgain = {
             feedback: 'Use range(n) so the loop runs exactly n times.',
           },
         ],
+        requireLoop: true,
       },
     },
     {
@@ -166,6 +199,7 @@ export const overAndOverAgain = {
             feedback: 'range(1, n + 1) counts from 1 up to and including n.',
           },
         ],
+        requireLoop: true,
       },
     },
   ],

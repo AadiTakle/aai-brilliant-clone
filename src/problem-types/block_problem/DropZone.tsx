@@ -5,18 +5,20 @@ export function DropZone({
   active,
   onPlace,
   label,
+  variant = 'statement',
 }: {
   id: string
   active: boolean
   onPlace: () => void
   label: string
+  variant?: 'statement' | 'expression'
 }) {
   const { setNodeRef, isOver } = useDroppable({ id })
   return (
     <button
       ref={setNodeRef}
       type="button"
-      className={`drop-zone${active ? ' is-active' : ''}${isOver ? ' is-over' : ''}`}
+      className={`drop-zone drop-zone-${variant}${active ? ' is-active' : ''}${isOver ? ' is-over' : ''}`}
       onClick={active ? onPlace : undefined}
       disabled={!active}
     >

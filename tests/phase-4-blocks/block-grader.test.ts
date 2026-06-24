@@ -10,29 +10,24 @@ function fakeRunner(map: Record<string, string>): PythonRunner {
   return async (source: string) => ({ stdout: map[source] ?? '<unhandled>', error: null })
 }
 
-const fillBlankSolution: CodeNode[] = [
-  {
-    type: 'for_range',
-    fields: { var: 'i', count: 5 },
-    slots: { body: [{ type: 'print_text', fields: { text: 'Hello!' } }] },
-  },
-]
+const num = (value: number): CodeNode => ({ type: 'num', fields: { value } })
+const str = (value: string): CodeNode => ({ type: 'str', fields: { value } })
+const variable = (name = 'i'): CodeNode => ({ type: 'var', fields: { name } })
+const range = (start: number, stop: number): CodeNode => ({
+  type: 'range_call',
+  slots: { start: [num(start)], stop: [num(stop)] },
+})
+const forEach = (iter: CodeNode, body: CodeNode[]): CodeNode => ({
+  type: 'for_each',
+  slots: { var: [variable('i')], iter: [iter], body },
+})
+const print = (value: CodeNode): CodeNode => ({ type: 'print', slots: { value: [value] } })
+
+const fillBlankSolution: CodeNode[] = [forEach(range(0, 5), [print(str('Hello!'))])]
 const FILL_EXPECTED = 'Hello!\nHello!\nHello!\nHello!\nHello!'
 
-const bugfixFixed: CodeNode[] = [
-  {
-    type: 'for_range',
-    fields: { var: 'i', count: 5 },
-    slots: { body: [{ type: 'print_var', fields: { var: 'i' } }] },
-  },
-]
-const bugfixBroken: CodeNode[] = [
-  {
-    type: 'for_range',
-    fields: { var: 'i', count: 3 },
-    slots: { body: [{ type: 'print_var', fields: { var: 'i' } }] },
-  },
-]
+const bugfixFixed: CodeNode[] = [forEach(range(0, 5), [print(variable('i'))])]
+const bugfixBroken: CodeNode[] = [forEach(range(0, 3), [print(variable('i'))])]
 const BUGFIX_EXPECTED = '0\n1\n2\n3\n4'
 
 describe('[Phase 4] block grader (fill_blank + bugfix)', () => {
@@ -43,7 +38,7 @@ describe('[Phase 4] block grader (fill_blank + bugfix)', () => {
   })
 
   it('fails an incomplete fill_blank (loop body empty)', async () => {
-    const empty: CodeNode[] = [{ type: 'for_range', fields: { count: 5 }, slots: { body: [] } }]
+    const empty: CodeNode[] = [forEach(range(0, 5), [])]
     const runner = fakeRunner({ [compileToSource(empty)]: '' })
     expect((await gradeBlocks(empty, FILL_EXPECTED, runner)).correct).toBe(false)
   })

@@ -1,5 +1,6 @@
 import { runPython, type PythonRunner } from '../pyodide/runner'
 import { normalizeOutput } from './outputGrader'
+import { usesLoopSource } from './loopCheck'
 import type { PythonTestCase } from '../../problem-types/python_sandbox/schema'
 
 export interface TestCaseResult {
@@ -14,6 +15,8 @@ export interface TestCaseResult {
 export interface PythonGradeResult {
   passed: boolean
   results: TestCaseResult[]
+  /** True when all test outputs pass but a required loop is missing. */
+  loopMissing: boolean
 }
 
 /** A python step is graded only if it defines at least one test case. */
@@ -29,6 +32,7 @@ export async function gradePython(
   source: string,
   testCases: PythonTestCase[],
   runner: PythonRunner = runPython,
+  options: { requireLoop?: boolean } = {},
 ): Promise<PythonGradeResult> {
   const results: TestCaseResult[] = []
   for (const tc of testCases) {
@@ -43,5 +47,7 @@ export async function gradePython(
       feedback: tc.feedback,
     })
   }
-  return { passed: results.length > 0 && results.every((r) => r.passed), results }
+  const outputsPass = results.length > 0 && results.every((r) => r.passed)
+  const loopMissing = Boolean(options.requireLoop) && outputsPass && !usesLoopSource(source)
+  return { passed: outputsPass && !loopMissing, results, loopMissing }
 }

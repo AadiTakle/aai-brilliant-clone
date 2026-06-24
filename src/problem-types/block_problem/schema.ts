@@ -24,6 +24,8 @@ export const blockProblemConfigSchema = z.object({
   // Preset program for fill_blank / bugfix modes.
   initial: z.array(blockInstanceSchema).default([]),
   expectedOutput: z.string().optional(),
+  // When true, a correct output only passes if the program actually uses a loop.
+  requireLoop: z.boolean().default(false),
 })
 
 export type BlockProblemConfig = z.infer<typeof blockProblemConfigSchema>

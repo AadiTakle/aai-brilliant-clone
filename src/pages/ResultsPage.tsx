@@ -4,6 +4,8 @@ import { db } from '../firebase/config'
 import { useAuth } from '../auth/useAuth'
 import { getLesson } from '../content/loader'
 import { ProgressBar } from '../components/ProgressBar'
+import { Currency } from '../components/Currency'
+import { StreakBadge } from '../components/StreakBadge'
 import { loadLessonProgress } from '../lib/progress/store'
 import {
   completedCount,
@@ -71,15 +73,21 @@ export function ResultsPage() {
 
       <div className="results-stats">
         <div className="results-stat">
-          <span className="results-stat-value">{earned}</span>
-          <span className="results-stat-label">Points this lesson</span>
+          <span className="results-stat-value">
+            <Currency amount={earned} />
+          </span>
+          <span className="results-stat-label">Sparks this lesson</span>
         </div>
         <div className="results-stat">
-          <span className="results-stat-value">{profile?.totalPoints ?? 0}</span>
-          <span className="results-stat-label">Total points</span>
+          <span className="results-stat-value">
+            <Currency amount={profile?.totalPoints ?? 0} />
+          </span>
+          <span className="results-stat-label">Total Sparks</span>
         </div>
         <div className="results-stat">
-          <span className="results-stat-value">{profile?.currentStreak ?? 0}</span>
+          <span className="results-stat-value">
+            <StreakBadge streak={profile?.currentStreak ?? 0} />
+          </span>
           <span className="results-stat-label">Day streak</span>
         </div>
       </div>

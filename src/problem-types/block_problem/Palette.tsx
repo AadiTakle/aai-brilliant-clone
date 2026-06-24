@@ -1,5 +1,5 @@
 import { useDraggable } from '@dnd-kit/core'
-import { getBlockDef } from '../../lib/blocks/definitions'
+import { blockCategory, getBlockDef } from '../../lib/blocks/definitions'
 
 function PaletteItem({
   type,
@@ -12,6 +12,7 @@ function PaletteItem({
 }) {
   const def = getBlockDef(type)
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({ id: `palette:${type}` })
+  const label = (def?.label ?? type).replaceAll('⬡', '▢')
   return (
     <button
       ref={setNodeRef}
@@ -21,7 +22,7 @@ function PaletteItem({
       {...listeners}
       {...attributes}
     >
-      <code>{def?.label ?? type}</code>
+      <code>{label}</code>
     </button>
   )
 }
@@ -35,11 +36,27 @@ export function Palette({
   heldType: string | null
   onPick: (type: string) => void
 }) {
+  const statements = types.filter((t) => blockCategory(t) === 'statement')
+  const values = types.filter((t) => blockCategory(t) === 'value')
+
   return (
     <div className="palette" aria-label="Block palette">
-      {types.map((type) => (
-        <PaletteItem key={type} type={type} held={heldType === type} onPick={() => onPick(type)} />
-      ))}
+      {statements.length > 0 && (
+        <div className="palette-group">
+          <p className="palette-group-label">Blocks</p>
+          {statements.map((type) => (
+            <PaletteItem key={type} type={type} held={heldType === type} onPick={() => onPick(type)} />
+          ))}
+        </div>
+      )}
+      {values.length > 0 && (
+        <div className="palette-group">
+          <p className="palette-group-label">Values</p>
+          {values.map((type) => (
+            <PaletteItem key={type} type={type} held={heldType === type} onPick={() => onPick(type)} />
+          ))}
+        </div>
+      )}
     </div>
   )
 }

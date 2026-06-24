@@ -5,6 +5,7 @@ import type { StepRenderProps } from '../types'
 import type { PythonSandboxConfig } from './schema'
 import { runPython } from '../../lib/pyodide/runner'
 import { gradePython, isPythonGraded, type PythonGradeResult } from '../../lib/grading/pythonGrader'
+import { diagnose } from '../../lib/grading/diagnostics'
 
 // Symbols/snippets that are awkward to type on mobile keyboards.
 const SYMBOLS: { label: string; insert: string }[] = [
@@ -53,7 +54,9 @@ function PythonSandboxBody({ title, config, onComplete, onGraded }: BodyProps) {
     setOutput(null)
     try {
       if (graded) {
-        const result = await gradePython(code, config.testCases)
+        const result = await gradePython(code, config.testCases, undefined, {
+          requireLoop: config.requireLoop,
+        })
         setGrade(result)
         onGraded?.({ correct: result.passed })
         if (result.passed) onComplete?.()
@@ -138,6 +141,10 @@ function PythonSandboxBody({ title, config, onComplete, onGraded }: BodyProps) {
                       <code>{r.actual.trim().replace(/\n/g, '⏎') || '(nothing)'}</code>
                     </p>
                   )}
+                  {(() => {
+                    const hint = diagnose({ expected: r.expected, actual: r.actual, stderr: r.error })
+                    return hint ? <p className="test-result-hint">Hint: {hint}</p> : null
+                  })()}
                   {r.feedback && <p className="test-result-feedback">{r.feedback}</p>}
                 </div>
               )}
@@ -147,7 +154,11 @@ function PythonSandboxBody({ title, config, onComplete, onGraded }: BodyProps) {
             role={grade.passed ? 'status' : 'alert'}
             className={`feedback ${grade.passed ? 'feedback-correct' : 'feedback-incorrect'}`}
           >
-            {grade.passed ? 'All tests passed!' : 'Some tests failed — tweak your code and run again.'}
+            {grade.passed
+              ? 'All tests passed!'
+              : grade.loopMissing
+                ? 'Right answer, but solve it with a loop instead of writing each line.'
+                : 'Some tests failed — tweak your code and run again.'}
           </p>
         </div>
       )}

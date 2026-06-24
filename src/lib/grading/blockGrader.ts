@@ -1,5 +1,6 @@
 import { compileToSource } from '../blocks/compiler'
 import type { CodeNode } from '../blocks/definitions'
+import { usesLoopNode } from '../blocks/analysis'
 import { runPython, type PythonRunner } from '../pyodide/runner'
 import { gradeOutput, type GradeResult } from './outputGrader'
 
@@ -21,15 +22,20 @@ export async function runBlocks(
 export interface BlockGradeResult extends GradeResult {
   source: string
   error: string | null
+  /** True when the output is right but the program is missing a required loop. */
+  loopMissing: boolean
 }
 
 export async function gradeBlocks(
   program: CodeNode[],
   expectedOutput: string,
   runner: PythonRunner = runPython,
+  options: { requireLoop?: boolean } = {},
 ): Promise<BlockGradeResult> {
   const { source, stdout, error } = await runBlocks(program, runner)
   const graded = gradeOutput(stdout, expectedOutput)
-  // A runtime error never counts as correct.
-  return { ...graded, correct: graded.correct && !error, source, error }
+  const outputCorrect = graded.correct && !error
+  const loopMissing = Boolean(options.requireLoop) && outputCorrect && !usesLoopNode(program)
+  // A runtime error never counts as correct; nor does a missing required loop.
+  return { ...graded, correct: outputCorrect && !loopMissing, source, error, loopMissing }
 }

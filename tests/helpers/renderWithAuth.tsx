@@ -4,6 +4,7 @@ import { MemoryRouter } from 'react-router-dom'
 import { vi } from 'vitest'
 import type { User } from 'firebase/auth'
 import { AuthContext, type AuthContextValue } from '../../src/auth/context'
+import { ThemeProvider } from '../../src/theme/ThemeProvider'
 
 export function makeUser(displayName: string | null, uid = 'test-uid'): User {
   return { uid, displayName, email: 'parent@example.com' } as unknown as User
@@ -28,9 +29,11 @@ export function renderWithAuth(
 ) {
   const value = options.authValue ?? makeAuthValue()
   const wrapper = (children: ReactNode) => (
-    <AuthContext.Provider value={value}>
-      <MemoryRouter initialEntries={options.initialEntries ?? ['/']}>{children}</MemoryRouter>
-    </AuthContext.Provider>
+    <ThemeProvider>
+      <AuthContext.Provider value={value}>
+        <MemoryRouter initialEntries={options.initialEntries ?? ['/']}>{children}</MemoryRouter>
+      </AuthContext.Provider>
+    </ThemeProvider>
   )
   return { value, ...render(wrapper(ui)) }
 }

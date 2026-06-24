@@ -4,13 +4,17 @@ import type { StepRenderProps } from '../types'
 import type { BlockProblemConfig } from './schema'
 import { compileToSource } from '../../lib/blocks/compiler'
 import { gradeOutput, type GradeResult } from '../../lib/grading/outputGrader'
+import { diagnose } from '../../lib/grading/diagnostics'
 import { runPython } from '../../lib/pyodide/runner'
 import {
+  findBlock,
   hydrate,
   initialWorkspace,
   workspaceReducer,
   type DropTarget,
 } from '../../lib/blocks/workspace'
+import { blockCategory, getBlockDef } from '../../lib/blocks/definitions'
+import { usesLoopNode } from '../../lib/blocks/analysis'
 import { Palette } from './Palette'
 import { WorkspaceView } from './WorkspaceView'
 
@@ -27,6 +31,7 @@ function BlockProblemBody({ title, config, onComplete, onGraded }: BodyProps) {
   const [output, setOutput] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [grade, setGrade] = useState<GradeResult | null>(null)
+  const [loopMissing, setLoopMissing] = useState(false)
 
   const graded = config.mode !== 'sandbox' && config.expectedOutput !== undefined
 
@@ -35,7 +40,20 @@ function BlockProblemBody({ title, config, onComplete, onGraded }: BodyProps) {
     if (!over) return
     const type = String(active.id).replace('palette:', '')
     const [, parentRaw, slot] = String(over.id).split(':')
-    const target: DropTarget = { parentId: parentRaw === 'root' ? null : parentRaw, slot }
+    const parentId = parentRaw === 'root' ? null : parentRaw
+
+    // Only allow value blocks into expression slots and statements into
+    // statement slots (the root program is a statement list).
+    const slotKind =
+      parentId === null
+        ? 'statement'
+        : getBlockDef(findBlock(state.program, parentId)?.type ?? '')?.slots.find(
+            (s) => s.name === slot,
+          )?.kind ?? 'statement'
+    const isValue = blockCategory(type) === 'value'
+    if ((slotKind === 'expression') !== isValue) return
+
+    const target: DropTarget = { parentId, slot }
     dispatch({ kind: 'hold', blockType: type })
     dispatch({ kind: 'place', target })
   }
@@ -44,6 +62,7 @@ function BlockProblemBody({ title, config, onComplete, onGraded }: BodyProps) {
     setRunning(true)
     setError(null)
     setGrade(null)
+    setLoopMissing(false)
     const source = compileToSource(state.program)
     try {
       const result = await runPython(source)
@@ -51,8 +70,11 @@ function BlockProblemBody({ title, config, onComplete, onGraded }: BodyProps) {
       setError(result.error)
       if (graded && config.expectedOutput !== undefined) {
         const g = gradeOutput(result.stdout, config.expectedOutput)
-        const correct = g.correct && !result.error
+        const outputCorrect = g.correct && !result.error
+        const missingLoop = config.requireLoop && outputCorrect && !usesLoopNode(state.program)
+        const correct = outputCorrect && !missingLoop
         setGrade({ ...g, correct })
+        setLoopMissing(missingLoop)
         onGraded?.({ correct })
         if (correct) onComplete?.()
       } else {
@@ -119,12 +141,25 @@ function BlockProblemBody({ title, config, onComplete, onGraded }: BodyProps) {
           <p role="status" className="feedback feedback-correct">
             Correct! Your loop produced the expected output.
           </p>
+        ) : loopMissing ? (
+          <p role="alert" className="feedback feedback-incorrect">
+            Right answer, but do it with a loop instead of placing each line by hand.
+          </p>
         ) : (
           <p role="alert" className="feedback feedback-incorrect">
             Not quite — compare your output to the goal and adjust your blocks.
           </p>
         )
       )}
+
+      {graded && !grade?.correct && !loopMissing && (() => {
+        const hint = diagnose({
+          expected: config.expectedOutput,
+          actual: output ?? '',
+          stderr: error,
+        })
+        return hint ? <p className="feedback-hint">Hint: {hint}</p> : null
+      })()}
     </section>
   )
 }

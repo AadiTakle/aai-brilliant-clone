@@ -19,9 +19,20 @@ describe('[Phase 4] Pyodide integration', () => {
   it('grades a compiled block program against expected output', async () => {
     const program: CodeNode[] = [
       {
-        type: 'for_range',
-        fields: { var: 'i', count: 5 },
-        slots: { body: [{ type: 'print_text', fields: { text: 'Hello!' } }] },
+        type: 'for_each',
+        slots: {
+          var: [{ type: 'var', fields: { name: 'i' } }],
+          iter: [
+            {
+              type: 'range_call',
+              slots: {
+                start: [{ type: 'num', fields: { value: 0 } }],
+                stop: [{ type: 'num', fields: { value: 5 } }],
+              },
+            },
+          ],
+          body: [{ type: 'print', slots: { value: [{ type: 'str', fields: { value: 'Hello!' } }] } }],
+        },
       },
     ]
     const res = await gradeBlocks(program, 'Hello!\nHello!\nHello!\nHello!\nHello!')

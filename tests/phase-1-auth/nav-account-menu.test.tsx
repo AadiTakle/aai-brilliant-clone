@@ -27,4 +27,16 @@ describe('[Phase 1] Nav account menu', () => {
 
     await waitFor(() => expect(logOut).toHaveBeenCalledTimes(1))
   })
+
+  it('toggles dark mode from the account menu', async () => {
+    const user = userEvent.setup()
+    renderWithAuth(<Nav />, { authValue: makeAuthValue({ user: makeUser('Ada') }) })
+
+    await user.click(screen.getByRole('button', { name: 'Ada' }))
+    const toggle = screen.getByRole('menuitemcheckbox', { name: /dark mode/i })
+    await user.click(toggle)
+
+    await waitFor(() => expect(document.documentElement.dataset.theme).toBe('dark'))
+    expect(screen.getByRole('menuitemcheckbox', { name: /light mode/i })).toBeInTheDocument()
+  })
 })

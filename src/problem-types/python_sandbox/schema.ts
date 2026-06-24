@@ -11,6 +11,8 @@ export const pythonSandboxConfigSchema = z.object({
   starterCode: z.string().default(''),
   // When testCases are present and graded is true, output is checked per case.
   testCases: z.array(pythonTestCaseSchema).default([]),
+  // When true, a passing solution must actually use a loop (not hardcoded prints).
+  requireLoop: z.boolean().default(false),
 })
 
 export type PythonSandboxConfig = z.infer<typeof pythonSandboxConfigSchema>

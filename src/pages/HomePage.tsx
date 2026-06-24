@@ -4,7 +4,8 @@ import { useAuth } from '../auth/useAuth'
 import { db } from '../firebase/config'
 import { listLessons } from '../content/loader'
 import { loadLessonProgress } from '../lib/progress/store'
-import { completedCount, type LessonProgress } from '../lib/progress/model'
+import { completedCount, isLessonComplete, type LessonProgress } from '../lib/progress/model'
+import { lessonCtaLabel } from '../lib/ui/lessonCta'
 import { ProgressBar } from '../components/ProgressBar'
 
 export function HomePage() {
@@ -48,18 +49,19 @@ export function HomePage() {
             const done = progress ? completedCount(progress, lesson) : 0
             const total = lesson.steps.length
             const resumeIndex = progress?.currentStepIndex ?? 0
+            const complete = progress ? isLessonComplete(progress, lesson) : false
             const started = done > 0 || resumeIndex > 0
+            const label = lessonCtaLabel(complete, started)
+            // Completed lessons restart from the beginning for review.
+            const targetIndex = complete ? 0 : started ? resumeIndex : 0
             return (
               <article key={lesson.id} className="lesson-card">
                 <h2>{lesson.title}</h2>
                 <p>{total} steps</p>
                 {user && <ProgressBar completed={done} total={total} />}
                 {user ? (
-                  <Link
-                    to={`/lessons/${lesson.id}/step/${started ? resumeIndex : 0}`}
-                    className="lesson-start"
-                  >
-                    {started ? 'Continue lesson' : 'Start lesson'}
+                  <Link to={`/lessons/${lesson.id}/step/${targetIndex}`} className="lesson-start">
+                    {label}
                   </Link>
                 ) : (
                   <span className="lesson-start is-disabled">Start lesson</span>
