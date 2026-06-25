@@ -98,8 +98,8 @@ export function ResultsPage() {
         <Link to={`/lessons/${lesson.id}/step/0`} className="ghost">
           Review lesson
         </Link>
-        <Link to="/" className="lesson-finish">
-          Back to lessons
+        <Link to="/?view=map" className="lesson-finish">
+          Back to course
         </Link>
       </div>
     </main>

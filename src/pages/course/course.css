@@ -1,0 +1,428 @@
+/* ===================== Course (home) ===================== */
+/* The course surface is full-bleed; it overrides the global centered `main`. */
+.course-page {
+  max-width: none;
+  width: 100%;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.course-shell {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ---- Landing: a single course card, front and center ---- */
+.course-shell.is-landing {
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-6) var(--space-5);
+}
+
+.course-card {
+  width: 100%;
+  max-width: 520px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-md);
+  padding: var(--space-8) var(--space-6);
+  text-align: center;
+}
+
+.course-card-eyebrow {
+  margin: 0 0 var(--space-2);
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--color-primary);
+}
+
+.course-card h1 {
+  font-size: clamp(2.2rem, 7vw, 3.2rem);
+  margin: 0 0 var(--space-3);
+}
+
+.course-card-desc {
+  color: var(--color-muted);
+  font-size: 1.02rem;
+  line-height: 1.6;
+  margin: 0 auto var(--space-5);
+  max-width: 40ch;
+}
+
+/* A teaser row of station dots that previews the path's signature. */
+.course-teaser {
+  display: flex;
+  justify-content: center;
+  gap: var(--space-2);
+  margin: 0 0 var(--space-5);
+}
+
+.course-teaser-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: var(--radius-pill);
+  background: var(--color-surface-2);
+  border: 2px solid var(--color-border);
+}
+
+.course-teaser-dot.is-done {
+  background: var(--circuit);
+  border-color: var(--circuit);
+}
+
+.course-teaser-dot.is-current {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px var(--color-primary-soft);
+}
+
+.course-card-progress {
+  margin: 0 0 var(--space-6);
+}
+
+.course-card-count {
+  display: block;
+  margin-top: var(--space-2);
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  color: var(--color-muted);
+}
+
+.course-start {
+  font-family: var(--font-display);
+  font-size: 1.15rem;
+  font-weight: 600;
+  padding: 0.85rem 2rem;
+  border-radius: var(--radius-pill);
+  box-shadow: var(--shadow-sm);
+}
+
+.course-start-note {
+  margin: var(--space-4) 0 0;
+  font-size: 0.85rem;
+  color: var(--color-muted);
+}
+
+/* ---- Map: a dim "control room" with a glowing path ---- */
+.course-shell.is-map {
+  background: radial-gradient(
+      120% 80% at 50% -10%,
+      var(--course-bg-2),
+      var(--course-bg) 60%
+    );
+  color: var(--course-on);
+  min-height: calc(100dvh - 60px);
+}
+
+.course-map-layout {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--space-5);
+  padding: var(--space-6) var(--space-5);
+  width: 100%;
+  max-width: 1100px;
+  margin: 0 auto;
+}
+
+.course-map-head {
+  text-align: center;
+  margin-bottom: var(--space-2);
+}
+
+.course-map-head h1 {
+  color: var(--course-on);
+  margin: 0 0 var(--space-1);
+}
+
+.course-map-head p {
+  color: var(--course-on-muted);
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+}
+
+/* The path itself: a centered vertical column of stations + belts. */
+.course-path {
+  list-style: none;
+  margin: 0;
+  padding: var(--space-4) 0 6rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.course-belt {
+  width: 6px;
+  height: 34px;
+  margin: var(--space-1) 0;
+  border-radius: 3px;
+  background: var(--course-line);
+  position: relative;
+  overflow: hidden;
+}
+
+.course-belt-fill {
+  position: absolute;
+  inset: 0;
+  background: var(--circuit);
+  transform-origin: top;
+}
+
+.course-station {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+/* ---- A station node: SVG progress ring around a circular button ---- */
+.node-button {
+  padding: 0;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.node-button:disabled {
+  cursor: not-allowed;
+}
+
+.node-core {
+  position: relative;
+  width: 96px;
+  height: 96px;
+  display: grid;
+  place-items: center;
+}
+
+.node-ring {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  transform: rotate(-90deg); /* start the ring fill at 12 o'clock */
+}
+
+.node-ring-track {
+  fill: none;
+  stroke: var(--course-line);
+  stroke-width: 6;
+}
+
+.node-ring-fill {
+  fill: none;
+  stroke: var(--circuit);
+  stroke-width: 6;
+  stroke-linecap: round;
+}
+
+.node-face {
+  position: relative;
+  width: 72px;
+  height: 72px;
+  border-radius: var(--radius-pill);
+  display: grid;
+  place-items: center;
+  font-size: 1.9rem;
+  background: var(--course-bg-2);
+  border: 2px solid var(--course-line);
+  color: var(--course-on);
+  transition: transform 0.15s ease, border-color 0.15s ease, background 0.15s ease;
+}
+
+.node-button:hover:not(:disabled) .node-face {
+  transform: scale(1.06);
+}
+
+.is-current .node-face {
+  border-color: var(--spark);
+  background: linear-gradient(180deg, var(--course-bg-2), var(--course-bg));
+  box-shadow: 0 0 0 4px rgba(255, 201, 60, 0.18), 0 0 22px rgba(255, 201, 60, 0.35);
+}
+
+.is-complete .node-face {
+  border-color: var(--circuit);
+  background: rgba(40, 199, 111, 0.16);
+}
+
+.is-locked .node-face {
+  color: var(--course-on-muted);
+  background: var(--course-bg);
+  opacity: 0.7;
+}
+
+.is-selected .node-face {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 3px;
+}
+
+.node-check,
+.node-lock {
+  font-size: 1.4rem;
+}
+
+.node-label {
+  max-width: 9rem;
+  text-align: center;
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 0.9rem;
+  line-height: 1.2;
+  color: var(--course-on);
+  text-wrap: balance;
+}
+
+.is-locked .node-label {
+  color: var(--course-on-muted);
+}
+
+.node-num {
+  display: block;
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  color: var(--course-on-muted);
+  letter-spacing: 0.08em;
+}
+
+/* The finale station reads as a "boss level". */
+.is-finale .node-face {
+  font-size: 2.1rem;
+}
+
+.is-finale .node-ring-track {
+  stroke: rgba(255, 201, 60, 0.25);
+}
+
+/* Keyboard focus on the round buttons. */
+.node-button:focus-visible {
+  outline: none;
+}
+
+.node-button:focus-visible .node-face {
+  outline: 3px solid var(--spark);
+  outline-offset: 3px;
+}
+
+/* ---- Lesson detail (desktop sidebar / mobile bottom sheet) ---- */
+.course-detail {
+  background: var(--course-bg-2);
+  border: 1px solid var(--course-line);
+  border-radius: var(--radius-lg);
+  padding: var(--space-6);
+  color: var(--course-on);
+  align-self: start;
+}
+
+.detail-icon {
+  font-size: 2.4rem;
+  line-height: 1;
+}
+
+.detail-eyebrow {
+  margin: var(--space-3) 0 var(--space-1);
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--course-on-muted);
+}
+
+.detail-title {
+  margin: 0 0 var(--space-3);
+  color: var(--course-on);
+  font-size: 1.5rem;
+}
+
+.detail-blurb {
+  color: var(--course-on-muted);
+  line-height: 1.6;
+  margin: 0 0 var(--space-5);
+}
+
+.detail-progress {
+  margin-bottom: var(--space-5);
+}
+
+.detail-progress .progress-bar-text {
+  color: var(--course-on-muted);
+}
+
+.detail-cta {
+  width: 100%;
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  font-weight: 600;
+  padding: 0.8rem 1.5rem;
+  border-radius: var(--radius-pill);
+}
+
+.detail-locked {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0;
+  padding: var(--space-3) var(--space-4);
+  border: 1px dashed var(--course-line);
+  border-radius: var(--radius-md);
+  color: var(--course-on-muted);
+  font-size: 0.9rem;
+}
+
+/* Desktop: detail sits as a sticky sidebar in the second column. */
+@media (min-width: 900px) {
+  .course-map-layout {
+    grid-template-columns: minmax(0, 1fr) 380px;
+    align-items: start;
+  }
+
+  .course-map-head {
+    grid-column: 1 / -1;
+  }
+
+  .course-detail {
+    position: sticky;
+    top: calc(60px + var(--space-5));
+  }
+}
+
+/* Mobile: detail becomes a fixed bottom sheet above the path. */
+@media (max-width: 899px) {
+  .course-detail {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 30;
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+    border-bottom: none;
+    box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.35);
+    padding: var(--space-5);
+    overscroll-behavior: contain;
+    max-height: 70dvh;
+    overflow-y: auto;
+  }
+
+  .detail-icon {
+    font-size: 2rem;
+  }
+
+  .detail-title {
+    font-size: 1.3rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .node-button:hover:not(:disabled) .node-face {
+    transform: none;
+  }
+}

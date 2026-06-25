@@ -1,44 +1,59 @@
-@import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@400;600;700;800;900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@400;600;700;800;900&family=JetBrains+Mono:wght@400;600;700&display=swap');
 
 :root {
-  /* Python brand blue is the single accent in a deliberately limited palette. */
-  --py-blue: #306998;
-  --py-blue-light: #4b8bbe;
+  /* "Machine room" palette — Python blue/yellow heritage, a green progress
+     circuit, a coral flame, and a deep ink for the course control-room. */
+  --ink: #0f1b2d;
+  --paper: #f4f7fb;
+  --py-blue: #2d7dd2;
+  --py-blue-light: #4b9fe0;
+  --spark: #ffc93c;
+  --circuit: #28c76f;
+  --coral: #ff6b5c;
 
-  /* Bolder, bubblier type: Fredoka for display, Nunito for body. */
+  /* Bolder, bubblier type: Fredoka for display, Nunito for body, JetBrains Mono
+     for the "machine" data (station numbers, counts, code). */
   --font-body: 'Nunito', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   --font-display: 'Fredoka', 'Nunito', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
 
   /* Semantic tokens — light theme */
   --color-primary: var(--py-blue);
-  --color-primary-hover: #27567d;
-  --color-primary-soft: #eaf1f7;
+  --color-primary-hover: #1f66b0;
+  --color-primary-soft: #e6f0fa;
   --color-on-primary: #ffffff;
 
-  /* Accent maps onto the primary so the palette stays limited (single accent). */
+  /* Accent maps onto the primary so the palette stays cohesive. */
   --color-accent: var(--color-primary);
   --color-accent-hover: var(--color-primary-hover);
   --color-accent-soft: var(--color-primary-soft);
   --color-on-accent: var(--color-on-primary);
 
-  --color-text: #1f2933;
+  --color-text: #18222e;
   --color-muted: #5f6470;
-  --color-bg: #f7f8fa;
+  --color-bg: var(--paper);
   --color-surface: #ffffff;
-  --color-surface-2: #f1f4f8;
-  --color-border: #e3e8ef;
+  --color-surface-2: #eef2f8;
+  --color-border: #dde4ee;
   /* Translucent scrim for overlays (e.g. the login gate) — theme-aware. */
-  --color-scrim: rgba(246, 249, 252, 0.6);
+  --color-scrim: rgba(244, 247, 251, 0.6);
 
-  --color-success: #1f9d57;
-  --color-success-soft: #e7f6ec;
-  --color-danger: #b42318;
+  --color-success: var(--circuit);
+  --color-success-soft: #e3f7ec;
+  --color-danger: #d64545;
   --color-danger-soft: #fdecea;
 
   /* Feature accents */
-  --color-currency: #306998;
-  --streak-cold: #1f2933;
-  --streak-hot: #f97316;
+  --color-currency: #b8860b;
+  --streak-cold: #8a93a3;
+  --streak-hot: var(--coral);
+
+  /* Course control-room surface (the map's dim backdrop + glowing nodes). */
+  --course-bg: #122236;
+  --course-bg-2: #1a2c44;
+  --course-on: #eaf1fb;
+  --course-on-muted: #9fb1c8;
+  --course-line: #2a3f5c;
 
   /* Spacing scale */
   --space-1: 0.25rem;
@@ -49,15 +64,15 @@
   --space-6: 2rem;
   --space-8: 3rem;
 
-  /* Radii — rounded edges used sparingly. */
-  --radius-sm: 6px;
-  --radius-md: 6px;
-  --radius-lg: 8px;
+  /* Radii — friendlier, rounder objects than the old flat 6px. */
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 18px;
   --radius-pill: 999px;
 
-  /* Flat design: no shadows. */
-  --shadow-sm: none;
-  --shadow-md: none;
+  /* Restrained depth so interactive objects read as tactile. */
+  --shadow-sm: 0 1px 2px rgba(15, 27, 45, 0.06), 0 1px 3px rgba(15, 27, 45, 0.09);
+  --shadow-md: 0 8px 24px rgba(15, 27, 45, 0.14);
 
   --maxw: 980px;
 
@@ -74,27 +89,38 @@
 }
 
 :root[data-theme='dark'] {
-  --color-primary: #4b8bbe;
-  --color-primary-hover: #5a99cc;
-  --color-primary-soft: #1e2c38;
-  --color-on-primary: #0f1419;
+  --color-primary: #4b9fe0;
+  --color-primary-hover: #6bb0e6;
+  --color-primary-soft: #15293c;
+  --color-on-primary: #0a1320;
 
-  --color-text: #e5e9f0;
-  --color-muted: #9aa3af;
-  --color-bg: #0f1419;
-  --color-surface: #1a2129;
-  --color-surface-2: #222b35;
-  --color-border: #2b3440;
-  --color-scrim: rgba(15, 20, 25, 0.6);
+  --color-text: #e7edf5;
+  --color-muted: #9fb1c8;
+  --color-bg: #0c1623;
+  --color-surface: #14202f;
+  --color-surface-2: #1c2c3f;
+  --color-border: #29384c;
+  --color-scrim: rgba(12, 22, 35, 0.6);
 
-  --color-success: #3fbb74;
-  --color-success-soft: #16301f;
+  --color-success: #3fd687;
+  --color-success-soft: #103224;
   --color-danger: #f0746a;
   --color-danger-soft: #3a1f1f;
 
-  --color-currency: #6bb0e6;
-  --streak-cold: #9aa3af;
-  --streak-hot: #fb923c;
+  --color-currency: #ffd866;
+  --streak-cold: #7c8aa0;
+  --streak-hot: #ff8073;
+
+  /* In dark mode the page already is a control room; nudge the course surface
+     slightly darker than the page so the map still reads as its own place. */
+  --course-bg: #0a1320;
+  --course-bg-2: #122031;
+  --course-on: #e7edf5;
+  --course-on-muted: #9fb1c8;
+  --course-line: #29384c;
+
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3), 0 1px 3px rgba(0, 0, 0, 0.4);
+  --shadow-md: 0 10px 30px rgba(0, 0, 0, 0.5);
 
   color-scheme: dark;
 }

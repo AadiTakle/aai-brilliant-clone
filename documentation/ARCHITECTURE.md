@@ -43,9 +43,32 @@ Python runtime (**Pyodide**), and persisted to **Firebase** (Auth + Firestore).
 ThemeProvider → AuthProvider → BrowserRouter → <Nav/> + <AppRoutes/>
 ```
 
-- [src/app/AppRoutes.tsx](../src/app/AppRoutes.tsx): `/` (home), `/sign-in`,
+- [src/app/AppRoutes.tsx](../src/app/AppRoutes.tsx): `/` (the course), `/sign-in`,
   `/sign-up`, `/lessons/:lessonId/step/:stepIndex`, `/lessons/:lessonId/results`.
   Lesson + results routes are wrapped in `RequireAuth`.
+- Animations use **Motion** (`motion/react`); the app is wrapped in
+  `<MotionConfig reducedMotion="user">` so every animation honors the OS
+  reduced-motion setting.
+
+### Home: the Python Basics course
+[src/pages/CoursePage.tsx](../src/pages/CoursePage.tsx) is the `/` route. It has
+two views, toggled by the `?view=map` search param:
+
+- **Landing** ([CourseCard.tsx](../src/components/course/CourseCard.tsx)): a
+  single course card (name, description, lesson-count progress, Get Started).
+- **Map** ([CourseMap.tsx](../src/components/course/CourseMap.tsx)): a Duolingo-style
+  vertical path of station nodes ([LessonNode.tsx](../src/components/course/LessonNode.tsx),
+  each an SVG progress ring), connected by "belts", with a lesson-detail panel
+  ([LessonDetail.tsx](../src/components/course/LessonDetail.tsx)) that is a sticky
+  sidebar on desktop and a fixed bottom sheet on mobile.
+
+The map is **gated**: it only renders for a signed-in learner, so logged-out
+visitors always see the card and Get Started routes them to `/sign-in`.
+Per-lesson lock/resume/CTA state and course totals come from
+[useCourseProgress.ts](../src/lib/progress/useCourseProgress.ts) (a lesson unlocks
+once the previous one is complete). UI-only copy/icons live in
+[src/content/course.ts](../src/content/course.ts), separate from the validated
+content model.
 - [src/auth/AuthProvider.tsx](../src/auth/AuthProvider.tsx) subscribes to
   `onAuthStateChanged`, loads the `users/{uid}` profile, and exposes
   `{ user, profile, loading, signUp, signIn, logOut, refreshProfile }` via

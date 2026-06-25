@@ -1,26 +1,34 @@
 import { describe, it, expect } from 'vitest'
 import { screen } from '@testing-library/react'
-import { HomePage } from '../../src/pages/HomePage'
+import { CoursePage } from '../../src/pages/CoursePage'
 import { makeAuthValue, makeUser, renderWithAuth } from '../helpers/renderWithAuth'
 
-// [Phase 1] Home page login gate: blur + prompt when logged out
-describe('[Phase 1] HomePage login gate', () => {
-  it('shows the login gate and blurs lessons when logged out', () => {
-    const { container } = renderWithAuth(<HomePage />, {
-      authValue: makeAuthValue({ user: null }),
-    })
-    expect(screen.getByRole('region', { name: /login required/i })).toBeInTheDocument()
-    expect(container.querySelector('.lessons-grid.is-blurred')).not.toBeNull()
-    // No active start links while logged out.
-    expect(screen.queryByRole('link', { name: /start lesson/i })).not.toBeInTheDocument()
+// [Phase 1] Home is the Python Basics course. Logged-out learners see the course
+// card but cannot reach the lesson map (the map is gated behind sign-in); the
+// course path only renders for a signed-in learner who has opened it.
+describe('[Phase 1] CoursePage gate', () => {
+  it('shows the course card with a sign-in prompt when logged out', () => {
+    renderWithAuth(<CoursePage />, { authValue: makeAuthValue({ user: null }) })
+    expect(screen.getByRole('heading', { name: /python basics/i })).toBeInTheDocument()
+    expect(screen.getByText(/sign in to save your progress/i)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /get started/i })).toBeInTheDocument()
   })
 
-  it('shows startable lessons and no gate when logged in', () => {
-    const { container } = renderWithAuth(<HomePage />, {
-      authValue: makeAuthValue({ user: makeUser('Ada') }),
+  it('does not reveal the lesson path to a logged-out learner, even at ?view=map', () => {
+    renderWithAuth(<CoursePage />, {
+      authValue: makeAuthValue({ user: null }),
+      initialEntries: ['/?view=map'],
     })
-    expect(screen.queryByRole('region', { name: /login required/i })).not.toBeInTheDocument()
-    expect(container.querySelector('.lessons-grid.is-blurred')).toBeNull()
-    expect(screen.getAllByRole('link', { name: /start lesson/i }).length).toBeGreaterThan(0)
+    expect(screen.queryByLabelText(/^Lesson 1/i)).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /get started/i })).toBeInTheDocument()
+  })
+
+  it('opens the lesson path for a signed-in learner at ?view=map', () => {
+    renderWithAuth(<CoursePage />, {
+      authValue: makeAuthValue({ user: makeUser('Ada') }),
+      initialEntries: ['/?view=map'],
+    })
+    expect(screen.getByLabelText(/^Lesson 1/i)).toBeInTheDocument()
+    expect(screen.queryByText(/sign in to save your progress/i)).not.toBeInTheDocument()
   })
 })

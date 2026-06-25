@@ -44,8 +44,8 @@ export function LessonPage() {
   return (
     <main className="lesson">
       <header className="lesson-header">
-        <Link to="/" className="lesson-back-link">
-          ← All lessons
+        <Link to="/?view=map" className="lesson-back-link">
+          ← Back to course
         </Link>
         <h1 className="lesson-title">{lesson.title}</h1>
         <ProgressBar completed={done} total={total} />

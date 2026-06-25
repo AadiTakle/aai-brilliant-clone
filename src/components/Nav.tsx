@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { AnimatePresence } from 'motion/react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../auth/useAuth'
 import { useTheme } from '../theme/useTheme'
@@ -99,13 +100,15 @@ export function Nav() {
         )}
       </div>
 
-      {streakOpen && (
-        <StreakModal
-          streak={profile?.currentStreak ?? 0}
-          activeDays={profile?.activeDays ?? []}
-          onClose={() => setStreakOpen(false)}
-        />
-      )}
+      <AnimatePresence>
+        {streakOpen && (
+          <StreakModal
+            streak={profile?.currentStreak ?? 0}
+            activeDays={profile?.activeDays ?? []}
+            onClose={() => setStreakOpen(false)}
+          />
+        )}
+      </AnimatePresence>
     </nav>
   )
 }

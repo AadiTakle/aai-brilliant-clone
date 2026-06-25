@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react'
+import { motion } from 'motion/react'
 import { weekActivity } from '../lib/progress/week'
 import { StreakBadge } from './StreakBadge'
 
@@ -57,14 +58,26 @@ export function StreakModal({
   const doneThisWeek = days.filter((d) => d.done).length
 
   return (
-    <div className="modal-overlay" role="presentation" onClick={onClose}>
-      <div
+    <motion.div
+      className="modal-overlay"
+      role="presentation"
+      onClick={onClose}
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.18 }}
+    >
+      <motion.div
         ref={dialogRef}
         className="modal streak-modal"
         role="dialog"
         aria-modal="true"
         aria-label="Your streak"
         onClick={(e) => e.stopPropagation()}
+        initial={{ opacity: 0, scale: 0.92, y: 12 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.96, y: 8 }}
+        transition={{ duration: 0.2, ease: 'easeOut' }}
       >
         <div className="streak-modal-head">
           <StreakBadge streak={streak} className="streak-badge-lg" />
@@ -102,7 +115,7 @@ export function StreakModal({
         <button type="button" className="modal-close" onClick={onClose}>
           Close
         </button>
-      </div>
-    </div>
+      </motion.div>
+    </motion.div>
   )
 }

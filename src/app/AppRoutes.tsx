@@ -1,5 +1,5 @@
 import { Route, Routes } from 'react-router-dom'
-import { HomePage } from '../pages/HomePage'
+import { CoursePage } from '../pages/CoursePage'
 import { LessonPage } from '../pages/LessonPage'
 import { ResultsPage } from '../pages/ResultsPage'
 import { SignInPage } from '../auth/SignInPage'
@@ -9,7 +9,7 @@ import { RequireAuth } from '../auth/RequireAuth'
 export function AppRoutes() {
   return (
     <Routes>
-      <Route path="/" element={<HomePage />} />
+      <Route path="/" element={<CoursePage />} />
       <Route path="/sign-in" element={<SignInPage />} />
       <Route path="/sign-up" element={<SignUpPage />} />
       <Route
