@@ -7,12 +7,17 @@ import { RepeatedAddition } from './widgets/RepeatedAddition'
 import { LoopVisualizer } from './widgets/LoopVisualizer'
 import { FunctionMachine } from './widgets/FunctionMachine'
 import { VariableBox } from './widgets/VariableBox'
+import { ValueBox } from './widgets/ValueBox'
 import { TypeSorter } from './widgets/TypeSorter'
 import { RemainderMachine } from './widgets/RemainderMachine'
+import { ModuloPicker } from './widgets/ModuloPicker'
 import { MultiplesGrid } from './widgets/MultiplesGrid'
 import { ComparisonExplorer } from './widgets/ComparisonExplorer'
 import { BranchVisualizer } from './widgets/BranchVisualizer'
 import { CodeTracer } from './widgets/CodeTracer'
+import { ProgramStepper } from './widgets/ProgramStepper'
+import { RangeMachine } from './widgets/RangeMachine'
+import { DecisionMachine } from './widgets/DecisionMachine'
 
 function ActivityView({ activity, onComplete }: { activity: Activity; onComplete: () => void }) {
   if (activity.kind === 'checkpoint') {
@@ -27,10 +32,14 @@ function ActivityView({ activity, onComplete }: { activity: Activity; onComplete
       return <FunctionMachine config={activity.config} onComplete={onComplete} />
     case 'variable_box':
       return <VariableBox config={activity.config} onComplete={onComplete} />
+    case 'value_box':
+      return <ValueBox config={activity.config} onComplete={onComplete} />
     case 'type_sorter':
       return <TypeSorter config={activity.config} onComplete={onComplete} />
     case 'remainder_machine':
       return <RemainderMachine config={activity.config} onComplete={onComplete} />
+    case 'modulo_picker':
+      return <ModuloPicker config={activity.config} onComplete={onComplete} />
     case 'multiples_grid':
       return <MultiplesGrid config={activity.config} onComplete={onComplete} />
     case 'comparison_explorer':
@@ -39,6 +48,12 @@ function ActivityView({ activity, onComplete }: { activity: Activity; onComplete
       return <BranchVisualizer config={activity.config} onComplete={onComplete} />
     case 'code_tracer':
       return <CodeTracer config={activity.config} onComplete={onComplete} />
+    case 'program_stepper':
+      return <ProgramStepper config={activity.config} onComplete={onComplete} />
+    case 'range_machine':
+      return <RangeMachine config={activity.config} onComplete={onComplete} />
+    case 'decision_machine':
+      return <DecisionMachine config={activity.config} onComplete={onComplete} />
     default:
       return null
   }
@@ -48,12 +63,37 @@ interface ArticleBodyProps {
   title?: string
   panels: Panel[]
   onComplete?: () => void
+  initiallyComplete?: boolean
 }
 
-function ArticleBody({ title, panels, onComplete }: ArticleBodyProps) {
+// Indices of every panel that gates progression with an activity.
+function activityIndices(panels: Panel[]): Set<number> {
+  const set = new Set<number>()
+  panels.forEach((panel, index) => {
+    if (panel.activity) set.add(index)
+  })
+  return set
+}
+
+function ArticleBody({ title, panels, onComplete, initiallyComplete }: ArticleBodyProps) {
   // How many panels are visible (>= 1), and which panels' activities are done.
-  const [revealed, setRevealed] = useState(1)
-  const [done, setDone] = useState<Set<number>>(new Set())
+  // If the learner already finished this article, open it fully so revisiting it
+  // never forces them to redo each activity to reveal the next panel.
+  const [revealed, setRevealed] = useState(() => (initiallyComplete ? panels.length : 1))
+  const [done, setDone] = useState<Set<number>>(() =>
+    initiallyComplete ? activityIndices(panels) : new Set<number>(),
+  )
+
+  // Progress can load in after mount; when it confirms this article was already
+  // completed, reveal the whole thing (and treat its activities as done).
+  useEffect(() => {
+    if (!initiallyComplete) return
+    setRevealed(panels.length)
+    setDone((prev) => {
+      const all = activityIndices(panels)
+      return prev.size === all.size ? prev : all
+    })
+  }, [initiallyComplete, panels])
 
   const markActivityDone = useCallback((index: number) => {
     setDone((prev) => {
@@ -113,7 +153,14 @@ function ArticleBody({ title, panels, onComplete }: ArticleBodyProps) {
   )
 }
 
-export function ArticleStep({ step, onComplete }: StepRenderProps) {
+export function ArticleStep({ step, onComplete, initiallyComplete }: StepRenderProps) {
   if (step.type !== 'article') return null
-  return <ArticleBody title={step.title} panels={step.config.panels} onComplete={onComplete} />
+  return (
+    <ArticleBody
+      title={step.title}
+      panels={step.config.panels}
+      onComplete={onComplete}
+      initiallyComplete={initiallyComplete}
+    />
+  )
 }

@@ -16,6 +16,12 @@ export const pythonSandboxConfigSchema = z.object({
   requireLoop: z.boolean().default(false),
   // A passing solution must actually use each listed construct.
   requiredConstructs: z.array(z.enum(['loop', 'modulo', 'conditional'])).default([]),
+  // Opt-in "close enough" grading: ignores case, surrounding whitespace, and
+  // trailing punctuation. Off by default so later lessons stay strict.
+  lenient: z.boolean().default(false),
+  // Optional celebratory message shown when every test passes (e.g. to mark a
+  // milestone like a learner's first program).
+  successMessage: z.string().optional(),
 })
 
 export type PythonSandboxConfig = z.infer<typeof pythonSandboxConfigSchema>

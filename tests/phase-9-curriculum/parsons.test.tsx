@@ -1,3 +1,4 @@
+import { StrictMode } from 'react'
 import { describe, it, expect, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -79,6 +80,25 @@ describe('[Phase 9] ParsonsProblemStep component', () => {
 
     expect(onComplete).toHaveBeenCalledTimes(1)
     expect(screen.getByText(/right order/i)).toBeInTheDocument()
+  })
+
+  it('removing a placed line returns it to the bank exactly once (StrictMode-safe, pure updaters)', async () => {
+    const user = userEvent.setup()
+    // StrictMode double-invokes state updaters to surface impurity; the old
+    // removeFromSolution called setBank inside the setSolution updater, so the
+    // removed line was added back to the bank TWICE. Guard against regressing.
+    render(
+      <StrictMode>
+        <ParsonsProblemStep step={step} onComplete={vi.fn()} />
+      </StrictMode>,
+    )
+
+    await user.click(screen.getByLabelText('Add print(i)'))
+    expect(screen.queryAllByLabelText('Add print(i)')).toHaveLength(0)
+
+    await user.click(screen.getByLabelText('Remove'))
+    // Exactly one copy back in the bank — not two.
+    expect(screen.queryAllByLabelText('Add print(i)')).toHaveLength(1)
   })
 
   it('does not complete with the wrong order', async () => {

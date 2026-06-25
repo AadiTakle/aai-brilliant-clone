@@ -7,6 +7,17 @@
 const PYODIDE_VERSION = '314.0.0'
 const CDN_BASE = `https://cdn.jsdelivr.net/pyodide/v${PYODIDE_VERSION}/full/`
 
+// Default wall-clock budget for a single Python run (excludes the one-time
+// Pyodide load). Runs that exceed it resolve with a friendly timeout error
+// instead of leaving the caller hanging. Pass `timeoutMs` to override (0 or a
+// non-finite value disables it).
+//
+// NOTE: this bounds the *awaited* promise. A pure-Python loop that never yields
+// (`while True: pass`) blocks the JS thread, so the only way to hard-abort it is
+// to run Pyodide in a Web Worker (out of scope here). The timeout still protects
+// against async / yielding runs overrunning and gives a clear message.
+export const DEFAULT_RUN_TIMEOUT_MS = 5000
+
 export interface RunResult {
   stdout: string
   error: string | null
@@ -14,6 +25,28 @@ export interface RunResult {
 
 export interface RunOptions {
   stdin?: string
+  /** Wall-clock budget in ms for the run. Defaults to `DEFAULT_RUN_TIMEOUT_MS`. */
+  timeoutMs?: number
+}
+
+class PythonTimeoutError extends Error {
+  readonly ms: number
+  constructor(ms: number) {
+    super(`Python run exceeded ${ms} ms`)
+    this.name = 'PythonTimeoutError'
+    this.ms = ms
+  }
+}
+
+// Reject if `promise` has not settled within `ms`. A non-positive / non-finite
+// budget disables the timeout.
+function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
+  if (!ms || ms <= 0 || !Number.isFinite(ms)) return promise
+  let timer: ReturnType<typeof setTimeout>
+  const timeout = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => reject(new PythonTimeoutError(ms)), ms)
+  })
+  return Promise.race([promise, timeout]).finally(() => clearTimeout(timer))
 }
 
 export type PythonRunner = (source: string, opts?: RunOptions) => Promise<RunResult>
@@ -62,6 +95,8 @@ export function loadPyodideRunner(): Promise<PyodideLike> {
 }
 
 export const runPython: PythonRunner = async (source, opts = {}) => {
+  const timeoutMs = opts.timeoutMs ?? DEFAULT_RUN_TIMEOUT_MS
+  // The (potentially slow) one-time load is intentionally outside the budget.
   const py = await loadPyodideRunner()
   let out = ''
   let err = ''
@@ -75,9 +110,16 @@ export const runPython: PythonRunner = async (source, opts = {}) => {
   }
 
   try {
-    await py.runPythonAsync(source)
+    await withTimeout(py.runPythonAsync(source), timeoutMs)
     return { stdout: out, error: err.trim() ? err.trim() : null }
   } catch (e) {
+    if (e instanceof PythonTimeoutError) {
+      const seconds = Math.round(e.ms / 1000)
+      return {
+        stdout: out,
+        error: `Your code took too long to run (over ${seconds} second${seconds === 1 ? '' : 's'}). This usually means a loop never stops — check what makes your loop end.`,
+      }
+    }
     return { stdout: out, error: e instanceof Error ? e.message : String(e) }
   }
 }

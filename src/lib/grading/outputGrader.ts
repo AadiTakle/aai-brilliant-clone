@@ -15,9 +15,29 @@ export function normalizeOutput(text: string): string {
     .replace(/^\n+/, '')
 }
 
-export function gradeOutput(actual: string, expected: string): GradeResult {
+/**
+ * "Close enough" normalization for beginner steps (opt-in). On top of
+ * `normalizeOutput`, it lowercases, collapses runs of inner whitespace to a
+ * single space, trims each line, and tolerates trailing punctuation — so
+ * "  HELLO   WORLD!! " matches "Hello World!". An empty output stays empty, so
+ * a blank program is never "close enough".
+ */
+export function normalizeLenient(text: string): string {
+  return normalizeOutput(text)
+    .toLowerCase()
+    .split('\n')
+    .map((line) => line.replace(/\s+/g, ' ').trim().replace(/[.,!?;:]+$/, '').trim())
+    .join('\n')
+}
+
+export function gradeOutput(
+  actual: string,
+  expected: string,
+  options: { lenient?: boolean } = {},
+): GradeResult {
+  const normalize = options.lenient ? normalizeLenient : normalizeOutput
   return {
-    correct: normalizeOutput(actual) === normalizeOutput(expected),
+    correct: normalize(actual) === normalize(expected),
     actual,
     expected,
   }

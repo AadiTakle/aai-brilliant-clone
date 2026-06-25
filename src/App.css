@@ -383,6 +383,63 @@ main {
   color: var(--color-muted);
 }
 
+.ra-goal {
+  margin: 0 0 var(--space-3);
+}
+
+.ra-chip {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 1.1rem;
+  font-weight: 700;
+  cursor: grab;
+}
+
+.ra-chip:active {
+  cursor: grabbing;
+}
+
+.ra-equation {
+  margin-top: var(--space-3);
+  min-height: 3rem;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  flex-wrap: wrap;
+  padding: var(--space-3);
+  border: 2px dashed var(--color-border);
+  border-radius: var(--radius-md);
+  font-size: 1.5rem;
+  font-weight: 700;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  color: var(--color-primary);
+  word-break: break-word;
+}
+
+.ra-sum {
+  color: var(--color-accent);
+}
+
+[data-widget='repeated_addition'][data-motion='full'] .ra-term {
+  animation: ra-drop-in 0.18s ease;
+}
+
+@keyframes ra-drop-in {
+  from {
+    opacity: 0;
+    transform: translateY(-0.4rem);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-widget='repeated_addition'] .ra-term {
+    animation: none;
+  }
+}
+
 button.ghost {
   background: transparent;
   color: var(--color-primary);
@@ -682,6 +739,56 @@ button.ghost:hover:not(:disabled) {
 .widget-function-machine {
   text-align: center;
 }
+
+/* The assembly line: input → machine → output, sitting on a conveyor belt. */
+.fm-line {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-3);
+  flex-wrap: nowrap;
+  padding: var(--space-3) var(--space-2) calc(var(--space-3) + 10px);
+  overflow: hidden;
+}
+/* the belt */
+.fm-line::after {
+  content: '';
+  position: absolute;
+  left: 6%;
+  right: 6%;
+  bottom: 8px;
+  height: 6px;
+  border-radius: 3px;
+  background: repeating-linear-gradient(
+    90deg,
+    var(--color-border) 0,
+    var(--color-border) 10px,
+    transparent 10px,
+    transparent 20px
+  );
+  opacity: 0.7;
+}
+
+.fm-chip {
+  display: inline-block;
+  font-size: 0.95rem;
+  padding: 4px 8px;
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  white-space: nowrap;
+}
+.fm-input,
+.fm-output {
+  font-size: 0.95rem;
+  flex: 0 0 auto;
+}
+.fm-output.console .fm-chip {
+  font-family: var(--font-mono, monospace);
+}
+
+/* The machine itself: a chunky box with a feed funnel and little gears. */
 .fm-box {
   display: inline-block;
   border: 2px solid var(--color-border);
@@ -690,13 +797,218 @@ button.ghost:hover:not(:disabled) {
   margin: var(--space-2) auto;
   background: var(--color-surface);
 }
+.fm-machine {
+  position: relative;
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  min-width: 104px;
+  margin: 0;
+  background: linear-gradient(180deg, var(--color-surface), var(--color-bg, var(--color-surface)));
+  box-shadow: inset 0 -3px 0 rgba(0, 0, 0, 0.08);
+  transition: border-color 160ms ease, box-shadow 160ms ease, transform 160ms ease;
+}
+.fm-machine-funnel {
+  width: 0;
+  height: 0;
+  border-left: 12px solid transparent;
+  border-right: 12px solid transparent;
+  border-top: 10px solid var(--color-border);
+  margin-bottom: 2px;
+}
+.fm-machine-label {
+  font-size: 0.95rem;
+}
+.fm-machine-gears {
+  display: inline-flex;
+  gap: 6px;
+}
+.fm-gear {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  border: 2px solid var(--color-border);
+}
 .fm-box.is-running {
   border-color: var(--color-accent);
 }
-.fm-input,
-.fm-output {
-  font-size: 0.95rem;
+.fm-machine.is-running {
+  box-shadow: 0 0 0 2px var(--color-accent), inset 0 -3px 0 rgba(0, 0, 0, 0.08);
 }
+
+/* --- Animation (default). The input slides into the machine; the output
+   emerges out the other side shortly after. --- */
+[data-widget='function_machine'][data-motion='full'] .fm-input .fm-chip {
+  transition: transform 900ms ease-in, opacity 900ms ease-in;
+}
+[data-widget='function_machine'][data-motion='full'] .fm-output .fm-chip {
+  transition: transform 700ms ease-out 900ms, opacity 700ms ease-out 900ms;
+}
+[data-widget='function_machine'][data-motion='full'][data-running='true'] .fm-input .fm-chip {
+  transform: translateX(60px) scale(0.85);
+  opacity: 0;
+}
+[data-widget='function_machine'][data-motion='full'][data-running='false'] .fm-output .fm-chip {
+  transform: translateX(-40px);
+  opacity: 0.35;
+}
+[data-widget='function_machine'][data-motion='full'][data-running='true'] .fm-output .fm-chip {
+  transform: translateX(0);
+  opacity: 1;
+}
+.fm-machine.is-running .fm-gear {
+  animation: fm-spin 900ms linear infinite;
+}
+@keyframes fm-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Reduced motion: no sliding / spinning, just an instant reveal. */
+[data-widget='function_machine'][data-motion='reduced'] .fm-input .fm-chip,
+[data-widget='function_machine'][data-motion='reduced'] .fm-output .fm-chip {
+  transition: none;
+  transform: none;
+  opacity: 1;
+}
+[data-widget='function_machine'][data-motion='reduced'] .fm-machine.is-running .fm-gear {
+  animation: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  [data-widget='function_machine'] .fm-input .fm-chip,
+  [data-widget='function_machine'] .fm-output .fm-chip {
+    transition: none;
+    transform: none;
+    opacity: 1;
+  }
+  [data-widget='function_machine'] .fm-machine.is-running .fm-gear {
+    animation: none;
+  }
+}
+
+/* --- Editable input (opt-in). One "Input: <field>" block the learner edits;
+   on Run the whole block is consumed by the machine. --- */
+.fm-input {
+  position: relative;
+}
+.fm-edit-block {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.95rem;
+  padding: 6px 10px;
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  transform-origin: right center;
+}
+.fm-edit-label {
+  font-weight: 600;
+  color: var(--color-text);
+}
+.fm-input-field {
+  width: 9ch;
+  min-width: 6ch;
+  font: inherit;
+  font-family: var(--font-mono, monospace);
+  color: var(--color-text);
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid var(--color-accent);
+  padding: 0 2px;
+  text-align: center;
+}
+.fm-input-field:focus {
+  outline: none;
+  border-bottom-color: var(--color-accent);
+}
+
+/* On Run (full motion) the whole Input block travels into the machine and is
+   consumed — it shrinks, slides toward the machine, and fades out. */
+[data-widget='function_machine'][data-motion='full'] .fm-edit-block[data-phase='consuming'] {
+  animation: fm-consume 850ms ease-in forwards;
+}
+@keyframes fm-consume {
+  0% {
+    transform: translateX(0) scale(1);
+    opacity: 1;
+  }
+  60% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateX(110px) scale(0.2);
+    opacity: 0;
+  }
+}
+/* Once the line has printed, the Input block slides back IN from the right so
+   the learner can edit and Run again. */
+[data-widget='function_machine'][data-motion='full'] .fm-edit-block[data-phase='reappearing'] {
+  animation: fm-reappear 450ms ease-out forwards;
+}
+@keyframes fm-reappear {
+  0% {
+    transform: translateX(110px) scale(0.2);
+    opacity: 0;
+  }
+  100% {
+    transform: translateX(0) scale(1);
+    opacity: 1;
+  }
+}
+
+/* The echo console: starts empty, fills with the typed text. */
+.fm-output.console.is-echo {
+  display: inline-flex;
+  align-items: center;
+  min-width: 12ch;
+  min-height: 2.2em;
+  padding: 6px 10px;
+  border-radius: var(--radius-sm);
+  background: #0f172a;
+  color: #e2e8f0;
+  border: 1px solid var(--color-border);
+  font-family: var(--font-mono, monospace);
+  text-align: left;
+}
+.fm-console-text {
+  white-space: pre;
+}
+/* The caret is only in the DOM while typing, so it can always blink. */
+.fm-caret {
+  display: inline-block;
+  width: 2px;
+  height: 1.1em;
+  margin-left: 2px;
+  background: #e2e8f0;
+  animation: fm-blink 800ms step-end infinite;
+}
+@keyframes fm-blink {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0;
+  }
+}
+[data-widget='function_machine'][data-motion='reduced'] .fm-edit-block {
+  animation: none;
+}
+[data-widget='function_machine'][data-motion='reduced'] .fm-caret {
+  animation: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  [data-widget='function_machine'] .fm-edit-block {
+    animation: none;
+  }
+  [data-widget='function_machine'] .fm-caret {
+    animation: none;
+  }
+}
+
 .fm-controls,
 .vb-controls,
 .rm-controls,
@@ -728,28 +1040,308 @@ button.ghost:hover:not(:disabled) {
   font-weight: 600;
 }
 
-.ts-items {
-  list-style: none;
-  margin: 0;
-  padding: 0;
+/* --- Interactive value box (drag a preset value into the box) --- */
+.widget-value-box {
+  text-align: center;
 }
-.ts-item {
+.vbx-options {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
+}
+.vbx-chip {
+  font-family: var(--font-mono, monospace);
+  font-weight: 600;
+  padding: 0.4rem 0.8rem;
+  border: 2px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  /* Theme-aware text: dark on light mode, light on dark mode (flips with the
+     data-theme token) so the dragged value stays readable in both modes. */
+  color: var(--color-text);
+  cursor: grab;
+}
+.vbx-chip:active {
+  cursor: grabbing;
+}
+.vbx-box {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  min-width: 7rem;
+  min-height: 4.5rem;
+  justify-content: center;
+  border: 3px dashed var(--color-border);
+  border-radius: var(--radius-md, 10px);
+  padding: var(--space-2) var(--space-3);
+  margin: 0 auto;
+  overflow: hidden;
+}
+.vbx-name {
+  font-size: 0.8rem;
+  color: var(--color-text-muted);
+}
+.vbx-slot {
+  font-family: var(--font-mono, monospace);
+  font-weight: 700;
+  font-size: 1.4rem;
+  min-height: 1.6rem;
+}
+.vbx-empty {
+  color: var(--color-text-muted);
+  font-weight: 400;
+  font-size: 1rem;
+}
+.vbx-statement {
+  font-family: var(--font-mono, monospace);
+  margin-top: var(--space-2);
+}
+/* The dropped value slides down into the box from above. */
+[data-widget='value_box'][data-motion='full'] .vbx-value {
+  animation: vbx-drop-in 360ms ease-out;
+}
+@keyframes vbx-drop-in {
+  from {
+    transform: translateY(-130%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+[data-widget='value_box'][data-motion='reduced'] .vbx-value {
+  animation: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  [data-widget='value_box'] .vbx-value {
+    animation: none;
+  }
+}
+
+/* --- Modulo picker (iPhone-alarm-style wheel → live remainder box) --- */
+.widget-modulo-picker {
+  text-align: center;
+}
+.mpk-stage {
   display: flex;
   align-items: center;
-  gap: var(--space-2);
-  padding: 0.3rem 0;
+  justify-content: center;
+  gap: var(--space-3);
+  margin-bottom: var(--space-2);
 }
-.ts-item.is-correct {
+.mpk-wheel {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  width: 4.5rem;
+  /* 5 visible 40px slots. Top/bottom padding = (height - slot)/2 = 80px so the
+     first/last numbers can reach the centre and slot i centres at scrollTop
+     i*40 — matching MODULO_PICKER_ITEM_HEIGHT in ModuloPicker.tsx. */
+  height: 200px;
+  overflow-y: auto;
+  /* Keep the scaled centre number from spawning a horizontal scrollbar. */
+  overflow-x: hidden;
+  padding: 80px 0;
+  /* No CSS scroll-snap: mandatory snapping fights our programmatic scroll/drag
+     (it re-snaps to its own border/padding-derived points, causing the dial to
+     land offset, skip a number, or refuse to drag). NumberWheel snaps in JS. */
+  scroll-snap-type: none;
+  /* No CSS smooth scroll either: Chrome applies it to the scrollTop we set on
+     every pointermove, so a mouse drag lags then overshoots to the edge. Drag
+     tracks instantly; taps/snaps pass behavior:'smooth' to scrollTo explicitly. */
+  scroll-behavior: auto;
+  border: 2px solid var(--color-border);
+  border-radius: var(--radius-md, 10px);
+  background: var(--color-surface);
+  /* Drag-to-scroll affordance; never select the digits while dragging. */
+  cursor: grab;
+  user-select: none;
+  -webkit-user-select: none;
+  /* Pin text size: mobile browsers auto-inflate text (text-size-adjust), which
+     grows each 40px row past 40px and threw the dial's centre maths off, making
+     it self-scroll. Keep rows exactly 40px on every viewport. */
+  text-size-adjust: 100%;
+  -webkit-text-size-adjust: 100%;
+  /* Hide the scrollbars — the dial scrolls by drag / wheel / tap, not a bar. */
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.mpk-wheel::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+  display: none;
+}
+.mpk-wheel:active {
+  cursor: grabbing;
+  /* A soft highlight band marks the "selected" centre slot of the dial. */
+  background-image: linear-gradient(
+    transparent calc(50% - 20px),
+    color-mix(in srgb, var(--color-accent) 12%, transparent) calc(50% - 20px),
+    color-mix(in srgb, var(--color-accent) 12%, transparent) calc(50% + 20px),
+    transparent calc(50% + 20px)
+  );
+}
+.mpk-num {
+  box-sizing: border-box;
+  height: 40px;
+  line-height: 40px;
+  padding: 0;
+  flex: 0 0 40px;
+  border: none;
+  background: transparent;
+  font-family: var(--font-mono, monospace);
+  font-size: 1.3rem;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  /* Scale (not font-size) keeps every slot exactly 40px tall for the wheel math. */
+  transform: scale(1);
+  transition: transform 0.15s ease, color 0.15s ease;
+}
+.mpk-num.is-selected {
+  color: var(--color-accent);
+  font-weight: 800;
+  transform: scale(1.35);
+}
+.mpk-op {
+  font-family: var(--font-mono, monospace);
+  font-weight: 700;
+  font-size: 1.3rem;
+  color: var(--color-text-muted);
+}
+.mpk-box {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  min-width: 5.5rem;
+  min-height: 4.5rem;
+  justify-content: center;
+  border: 3px dashed var(--color-border);
+  border-radius: var(--radius-md, 10px);
+  padding: var(--space-2) var(--space-3);
+}
+.mpk-box-label {
+  font-size: 0.8rem;
+  color: var(--color-text-muted);
+}
+.mpk-box-value {
+  font-family: var(--font-mono, monospace);
+  font-weight: 800;
+  font-size: 1.8rem;
+}
+.mpk-statement {
+  font-family: var(--font-mono, monospace);
+  margin-top: var(--space-1, 4px);
+}
+[data-widget='modulo_picker'][data-motion='reduced'] .mpk-wheel {
+  scroll-behavior: auto;
+}
+[data-widget='modulo_picker'][data-motion='reduced'] .mpk-num {
+  transition: none;
+}
+/* Generic reduced-motion for any shared scroll wheel (ModuloPicker +
+   ComparisonExplorer): the wheel carries its own data-motion attribute. */
+.mpk-wheel[data-motion='reduced'] {
+  scroll-behavior: auto;
+}
+.mpk-wheel[data-motion='reduced'] .mpk-num {
+  transition: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .mpk-wheel {
+    scroll-behavior: auto;
+  }
+  .mpk-num {
+    transition: none;
+  }
+}
+
+/* --- Type sorter (Keep-Talking-style: central word + option buttons) --- */
+.widget-type-sorter {
+  text-align: center;
+}
+.ts-stage {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 4.5rem;
+  margin: var(--space-2) auto var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  border: 2px solid var(--color-border);
+  border-radius: var(--radius-md, 10px);
+  background: var(--color-surface);
+  overflow: hidden;
+}
+.ts-current {
+  font-family: var(--font-mono, monospace);
+  font-weight: 700;
+  font-size: 2rem;
+}
+.ts-current.ts-done {
   color: var(--color-success);
 }
-.ts-item.is-wrong {
-  color: var(--color-danger, #c0392b);
+.ts-leaving {
+  position: absolute;
+  font-family: var(--font-mono, monospace);
+  font-weight: 700;
+  font-size: 2rem;
 }
-.ts-buttons button.is-selected {
-  border-color: var(--color-accent);
+.ts-buttons {
+  display: flex;
+  justify-content: center;
+  gap: var(--space-2);
 }
-.ts-label {
-  min-width: 5rem;
+.ts-progress {
+  color: var(--color-text-muted);
+  font-size: 0.85rem;
+  margin-top: var(--space-2);
+}
+/* The answered word slides off left; the next word slides in from the right. */
+[data-widget='type_sorter'][data-motion='full'] .ts-current {
+  animation: ts-enter 280ms ease-out;
+}
+[data-widget='type_sorter'][data-motion='full'] .ts-leaving {
+  animation: ts-leave 280ms ease-in forwards;
+}
+@keyframes ts-enter {
+  from {
+    transform: translateX(120%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+@keyframes ts-leave {
+  from {
+    transform: translateX(0);
+    opacity: 1;
+  }
+  to {
+    transform: translateX(-120%);
+    opacity: 0;
+  }
+}
+.widget-type-sorter.is-wrong .ts-stage {
+  border-color: var(--color-danger, #c0392b);
+}
+[data-widget='type_sorter'][data-motion='reduced'] .ts-current,
+[data-widget='type_sorter'][data-motion='reduced'] .ts-leaving {
+  animation: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  [data-widget='type_sorter'] .ts-current,
+  [data-widget='type_sorter'] .ts-leaving {
+    animation: none;
+  }
 }
 
 .rm-readout.is-multiple,
@@ -782,11 +1374,29 @@ button.ghost:hover:not(:disabled) {
   align-items: center;
   gap: var(--space-2);
 }
+/* Two scroll dials with the operator between them, like the modulo picker. */
+.ce-wheels {
+  justify-content: center;
+  gap: var(--space-3);
+  margin-bottom: var(--space-2);
+}
+.ce-wheels select {
+  font-family: var(--font-mono, monospace);
+  font-size: 1.3rem;
+  font-weight: 700;
+}
+.ce-result {
+  text-align: center;
+  font-size: 1.1rem;
+}
 .ce-result .is-true {
   color: var(--color-success);
 }
 .ce-result .is-false {
   color: var(--color-danger, #c0392b);
+}
+.widget-comparison-explorer {
+  text-align: center;
 }
 
 .bv-branches {
@@ -837,6 +1447,286 @@ button.ghost:hover:not(:disabled) {
   list-style: none;
   margin: 0;
   padding: 0;
+}
+
+/* Program stepper ("the decision machine"): read-only code + side input field,
+   stepped one line at a time with commentary. */
+.ps-stage {
+  display: grid;
+  grid-template-columns: 1fr minmax(8rem, 14rem);
+  gap: var(--space-3);
+  align-items: start;
+}
+@media (max-width: 640px) {
+  .ps-stage {
+    grid-template-columns: 1fr;
+  }
+}
+.ps-code {
+  margin: 0;
+}
+.ps-line {
+  display: flex;
+  gap: var(--space-2);
+  padding: 0 0.25rem;
+  border-radius: var(--radius-sm);
+}
+.ps-line.is-current {
+  background: var(--color-surface);
+  outline: 2px solid var(--color-accent);
+}
+[data-widget='program_stepper'][data-motion='full'] .ps-line {
+  transition: background 0.2s ease, outline-color 0.2s ease;
+}
+.ps-gutter {
+  color: var(--color-text-muted);
+  user-select: none;
+  min-width: 1.5rem;
+  text-align: right;
+}
+.ps-input-label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--color-text-muted);
+}
+.ps-input {
+  font: inherit;
+  padding: var(--space-2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-bg);
+  color: var(--color-text);
+}
+.ps-input-note {
+  font-size: 0.75rem;
+  margin: var(--space-2) 0 0;
+}
+.ps-vars {
+  display: grid;
+  gap: 0.25rem;
+  padding: var(--space-2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-bg);
+}
+.ps-var code {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--color-primary);
+}
+.ps-readout {
+  margin-top: var(--space-3);
+  display: grid;
+  gap: var(--space-2);
+}
+.ps-commentary {
+  margin: 0;
+  min-height: 2.5rem;
+}
+.ps-output {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+.ps-output-label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--color-text-muted);
+}
+.ps-controls {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+}
+.ps-progress {
+  color: var(--color-text-muted);
+  font-size: 0.85rem;
+}
+
+/* Decision machine (learner-driven): a number DIAL on the left routes control
+   flow through the if/elif/else lines on the right, lighting the first match and
+   showing what prints — live as the dial scrolls. Reuses the shared .mpk-wheel. */
+.widget-decision-machine {
+  text-align: left;
+}
+.dm-stage {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: var(--space-4);
+  align-items: center;
+}
+@media (max-width: 640px) {
+  .dm-stage {
+    grid-template-columns: 1fr;
+    justify-items: center;
+  }
+}
+.dm-dial {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+}
+.dm-value code {
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: var(--color-primary);
+}
+.dm-branches {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.25rem;
+}
+.dm-branch {
+  padding: 0.25rem 0.5rem;
+  border-left: 3px solid transparent;
+  border-radius: var(--radius-sm);
+}
+.dm-branch.is-active {
+  border-left-color: var(--color-accent);
+  background: var(--color-surface);
+  font-weight: 600;
+}
+[data-widget='decision_machine'][data-motion='full'] .dm-branch {
+  transition: background 0.2s ease, border-color 0.2s ease;
+}
+.dm-label {
+  color: var(--color-text-muted);
+}
+.dm-output {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+}
+.dm-output-label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--color-text-muted);
+}
+.dm-hint {
+  font-size: 0.8rem;
+  margin: var(--space-2) 0 0;
+}
+
+/* Range machine ("watch range(...) collapse"): a number wheel sets n, then the
+   range expression collapses one step at a time into the list of numbers. */
+.widget-range-machine {
+  text-align: center;
+}
+.rm-stage {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+.rm-wheel-area {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+}
+.rm-wheel-label {
+  font-family: var(--font-mono, monospace);
+  font-weight: 800;
+  font-size: 1.1rem;
+  color: var(--color-primary);
+}
+.rm-machine {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 12rem;
+}
+.rm-call {
+  margin: 0;
+}
+.rm-call-code {
+  font-family: var(--font-mono, monospace);
+  font-size: 1.5rem;
+  font-weight: 700;
+  padding: var(--space-2) var(--space-3);
+  border: 2px solid var(--color-border);
+  border-radius: var(--radius-md, 10px);
+  background: var(--color-surface);
+  display: inline-block;
+}
+[data-widget='range_machine'][data-motion='full'] .rm-call-code {
+  animation: rm-pulse 0.35s ease;
+}
+@keyframes rm-pulse {
+  from {
+    transform: scale(1.08);
+    border-color: var(--color-accent);
+  }
+  to {
+    transform: scale(1);
+  }
+}
+.rm-arrow {
+  color: var(--color-text-muted);
+  font-size: 1.4rem;
+  line-height: 1;
+}
+.rm-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  justify-content: center;
+  min-height: 2.6rem;
+  align-items: center;
+}
+.rm-num {
+  font-family: var(--font-mono, monospace);
+  font-weight: 800;
+  font-size: 1.2rem;
+  min-width: 2rem;
+  padding: 0.3rem 0.5rem;
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--color-accent) 16%, transparent);
+  color: var(--color-text);
+}
+[data-widget='range_machine'][data-motion='full'] .rm-num {
+  animation: rm-pop 0.25s ease both;
+}
+@keyframes rm-pop {
+  from {
+    transform: scale(0.4);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+.rm-commentary {
+  margin: var(--space-3) 0 0;
+  min-height: 2.5rem;
+}
+.rm-controls {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+}
+.rm-progress {
+  color: var(--color-text-muted);
+  font-size: 0.85rem;
+}
+@media (prefers-reduced-motion: reduce) {
+  .rm-call-code,
+  .rm-num {
+    animation: none;
+  }
 }
 
 /* Parsons problem: bank + solution columns of reorderable code lines. */

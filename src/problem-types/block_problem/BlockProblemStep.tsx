@@ -13,8 +13,8 @@ import {
   workspaceReducer,
   type DropTarget,
 } from '../../lib/blocks/workspace'
-import { blockCategory, getBlockDef } from '../../lib/blocks/definitions'
-import { missingConstructsNode } from '../../lib/blocks/analysis'
+import { blockCategory, getBlockDef, type CodeNode } from '../../lib/blocks/definitions'
+import { comparesVariable, missingConstructsNode, printsVariable, reassignmentEditedEarlierNotLast } from '../../lib/blocks/analysis'
 import { constructHint, effectiveConstructs, type Construct } from '../../lib/grading/constructCheck'
 import { Palette } from './Palette'
 import { WorkspaceView } from './WorkspaceView'
@@ -27,12 +27,16 @@ interface BodyProps {
 }
 
 function BlockProblemBody({ title, config, onComplete, onGraded }: BodyProps) {
-  const [state, dispatch] = useReducer(workspaceReducer, config.initial, initialWorkspace)
+  const [state, dispatch] = useReducer(workspaceReducer, undefined, () =>
+    initialWorkspace(config.initial, config.lockBlocks),
+  )
   const [running, setRunning] = useState(false)
   const [output, setOutput] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [grade, setGrade] = useState<GradeResult | null>(null)
   const [missing, setMissing] = useState<Construct[]>([])
+  const [printVarMissing, setPrintVarMissing] = useState(false)
+  const [compareMissing, setCompareMissing] = useState(false)
 
   const graded = config.mode !== 'sandbox' && config.expectedOutput !== undefined
 
@@ -64,22 +68,43 @@ function BlockProblemBody({ title, config, onComplete, onGraded }: BodyProps) {
     setError(null)
     setGrade(null)
     setMissing([])
+    setPrintVarMissing(false)
+    setCompareMissing(false)
     const source = compileToSource(state.program)
     try {
       const result = await runPython(source)
       setOutput(result.stdout)
       setError(result.error)
       if (graded && config.expectedOutput !== undefined) {
-        const g = gradeOutput(result.stdout, config.expectedOutput)
+        const g = gradeOutput(result.stdout, config.expectedOutput, { lenient: config.lenient })
         const outputCorrect = g.correct && !result.error
         const required = effectiveConstructs({
           requireLoop: config.requireLoop,
           requiredConstructs: config.requiredConstructs,
         })
         const missingConstructs = outputCorrect ? missingConstructsNode(state.program, required) : []
-        const correct = outputCorrect && missingConstructs.length === 0
+        const skippedPrintVar =
+          outputCorrect &&
+          missingConstructs.length === 0 &&
+          config.requirePrintVar !== undefined &&
+          !printsVariable(state.program, config.requirePrintVar)
+        const fakedCompare =
+          outputCorrect &&
+          missingConstructs.length === 0 &&
+          !skippedPrintVar &&
+          config.requireCompare !== undefined &&
+          !comparesVariable(
+            state.program,
+            config.requireCompare.variable,
+            config.requireCompare.op,
+            config.requireCompare.against,
+          )
+        const correct =
+          outputCorrect && missingConstructs.length === 0 && !skippedPrintVar && !fakedCompare
         setGrade({ ...g, correct })
         setMissing(missingConstructs)
+        setPrintVarMissing(skippedPrintVar)
+        setCompareMissing(fakedCompare)
         onGraded?.({ correct })
         if (correct) onComplete?.()
       } else {
@@ -91,6 +116,23 @@ function BlockProblemBody({ title, config, onComplete, onGraded }: BodyProps) {
       setRunning(false)
     }
   }
+
+  // A reassignment-specific, answer-free signal: the learner edited an earlier
+  // assignment but left the final one untouched (the "last value wins" miss).
+  const reassignWrongLine =
+    graded &&
+    grade !== null &&
+    !grade.correct &&
+    !error &&
+    missing.length === 0 &&
+    !printVarMissing &&
+    !compareMissing &&
+    config.reassignmentVar !== undefined &&
+    reassignmentEditedEarlierNotLast(
+      state.program,
+      config.initial as CodeNode[],
+      config.reassignmentVar,
+    )
 
   return (
     <section className="problem problem-block" data-step-type="block_problem">
@@ -104,7 +146,7 @@ function BlockProblemBody({ title, config, onComplete, onGraded }: BodyProps) {
             heldType={state.held}
             onPick={(t) => dispatch({ kind: 'hold', blockType: state.held === t ? null : t })}
           />
-          <WorkspaceView state={state} dispatch={dispatch} />
+          <WorkspaceView state={state} dispatch={dispatch} locked={config.lockBlocks} />
         </div>
       </DndContext>
 
@@ -150,6 +192,22 @@ function BlockProblemBody({ title, config, onComplete, onGraded }: BodyProps) {
           <p role="alert" className="feedback feedback-incorrect">
             {constructHint(missing)}
           </p>
+        ) : printVarMissing && config.requirePrintVar ? (
+          <p role="alert" className="feedback feedback-incorrect">
+            Let the box do the work — put the variable <code>{config.requirePrintVar}</code> inside{' '}
+            <code>print()</code> instead of typing the text straight in.
+          </p>
+        ) : compareMissing && config.requireCompare ? (
+          <p role="alert" className="feedback feedback-incorrect">
+            Your yes/no question isn't checking the right thing. Make it compare your{' '}
+            <code>{config.requireCompare.variable}</code> box — that's the leftover you just worked
+            out.
+          </p>
+        ) : reassignWrongLine ? (
+          <p role="alert" className="feedback feedback-incorrect">
+            A box keeps only the value set on the line that runs <strong>last</strong>. Take another look
+            at which assignment you actually changed.
+          </p>
         ) : (
           <p role="alert" className="feedback feedback-incorrect">
             Not quite — compare your output to the goal and adjust your blocks.
@@ -157,8 +215,9 @@ function BlockProblemBody({ title, config, onComplete, onGraded }: BodyProps) {
         )
       )}
 
-      {graded && !grade?.correct && missing.length === 0 && (() => {
+      {graded && !grade?.correct && missing.length === 0 && !printVarMissing && !compareMissing && !reassignWrongLine && (() => {
         const hint = diagnose({
+          kind: 'block',
           expected: config.expectedOutput,
           actual: output ?? '',
           stderr: error,

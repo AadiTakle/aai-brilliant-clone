@@ -60,6 +60,7 @@ function PythonSandboxBody({ title, config, onComplete, onGraded }: BodyProps) {
         const result = await gradePython(code, config.testCases, undefined, {
           requireLoop: config.requireLoop,
           requiredConstructs: config.requiredConstructs,
+          lenient: config.lenient,
         })
         setGrade(result)
         onGraded?.({ correct: result.passed })
@@ -147,7 +148,7 @@ function PythonSandboxBody({ title, config, onComplete, onGraded }: BodyProps) {
                     </p>
                   )}
                   {(() => {
-                    const hint = diagnose({ expected: r.expected, actual: r.actual, stderr: r.error, source: code })
+                    const hint = diagnose({ kind: 'python', expected: r.expected, actual: r.actual, stderr: r.error, source: code })
                     return hint ? <p className="test-result-hint">Hint: {hint}</p> : null
                   })()}
                   {r.feedback && <p className="test-result-feedback">{r.feedback}</p>}
@@ -160,7 +161,7 @@ function PythonSandboxBody({ title, config, onComplete, onGraded }: BodyProps) {
             className={`feedback ${grade.passed ? 'feedback-correct' : 'feedback-incorrect'}`}
           >
             {grade.passed
-              ? 'All tests passed!'
+              ? config.successMessage ?? 'All tests passed!'
               : grade.missingConstructs.length > 0
                 ? constructHint(grade.missingConstructs)
                 : 'Some tests failed — tweak your code and run again.'}

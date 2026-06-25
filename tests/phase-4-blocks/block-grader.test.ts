@@ -57,3 +57,35 @@ describe('[Phase 4] block grader (fill_blank + bugfix)', () => {
     expect((await gradeBlocks(fillBlankSolution, FILL_EXPECTED, runner)).correct).toBe(false)
   })
 })
+
+describe('[Phase 4] block grader — requirePrintVar guard', () => {
+  const assign = (name: string, value: CodeNode): CodeNode => ({
+    type: 'assign',
+    slots: { target: [variable(name)], value: [value] },
+  })
+  // Bypasses the box: prints the literal "Hello" instead of printing `word`.
+  const skipsVariable: CodeNode[] = [assign('word', str('Hi')), print(str('Hello'))]
+  // Routes the value through the box: word = "Hello"; print(word).
+  const usesVariable: CodeNode[] = [assign('word', str('Hello')), print(variable('word'))]
+
+  it('fails a correct-output program that prints a literal instead of the variable', async () => {
+    const runner = fakeRunner({ [compileToSource(skipsVariable)]: 'Hello' })
+    const res = await gradeBlocks(skipsVariable, 'Hello', runner, { requirePrintVar: 'word' })
+    expect(res.correct).toBe(false)
+    expect(res.printVarMissing).toBe(true)
+  })
+
+  it('passes when the print actually uses the required variable', async () => {
+    const runner = fakeRunner({ [compileToSource(usesVariable)]: 'Hello' })
+    const res = await gradeBlocks(usesVariable, 'Hello', runner, { requirePrintVar: 'word' })
+    expect(res.correct).toBe(true)
+    expect(res.printVarMissing).toBe(false)
+  })
+
+  it('does not flag when no requirePrintVar is set (other lessons unaffected)', async () => {
+    const runner = fakeRunner({ [compileToSource(skipsVariable)]: 'Hello' })
+    const res = await gradeBlocks(skipsVariable, 'Hello', runner)
+    expect(res.correct).toBe(true)
+    expect(res.printVarMissing).toBe(false)
+  })
+})

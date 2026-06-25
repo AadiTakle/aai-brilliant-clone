@@ -1,7 +1,8 @@
 import { describe, it, expect } from 'vitest'
 import { compileToSource } from '../../src/lib/blocks/compiler'
+import { BLOCK_DEFS } from '../../src/lib/blocks/definitions'
 import type { CodeNode } from '../../src/lib/blocks/definitions'
-import { usesConditionalNode, usesLoopNode, usesModuloNode } from '../../src/lib/blocks/analysis'
+import { comparesVariable, usesConditionalNode, usesLoopNode, usesModuloNode } from '../../src/lib/blocks/analysis'
 
 const num = (value: number): CodeNode => ({ type: 'num', fields: { value } })
 const str = (value: string): CodeNode => ({ type: 'str', fields: { value } })
@@ -43,6 +44,12 @@ describe('[Phase 9] block engine — new blocks', () => {
 
   it('compiles a comparison expression', () => {
     expect(compileToSource([print(compare(variable('i'), '==', num(0)))])).toBe('print(i == 0)')
+  })
+
+  it('compare block only offers the operators the curriculum teaches (==, >, <)', () => {
+    const opField = BLOCK_DEFS.compare.fields?.find((f) => f.name === 'op')
+    // Untaught comparators (!=, <=, >=) would only confuse a true beginner.
+    expect(opField?.options).toEqual(['==', '>', '<'])
   })
 
   it('compiles a modulo expression', () => {
@@ -100,5 +107,28 @@ describe('[Phase 9] block analysis detectors', () => {
     expect(usesModuloNode(plain)).toBe(false)
     // a `+` binop is not modulo
     expect(usesModuloNode([print(binop(variable('a'), '+', variable('b')))])).toBe(false)
+  })
+})
+
+// [Phase 9] comparesVariable — the "your yes/no question must test the box" guard
+describe('[Phase 9] comparesVariable detector', () => {
+  it('accepts a compare that tests the variable with the right op and literal (either side)', () => {
+    expect(comparesVariable([print(compare(variable('remainder'), '==', num(0)))], 'remainder', '==', 0)).toBe(true)
+    // order does not matter: 0 == remainder is just as valid
+    expect(comparesVariable([print(compare(num(0), '==', variable('remainder')))], 'remainder', '==', 0)).toBe(true)
+  })
+
+  it('rejects a faked comparison that never references the variable (e.g. 0 == 0)', () => {
+    expect(comparesVariable([print(compare(num(0), '==', num(0)))], 'remainder', '==', 0)).toBe(false)
+  })
+
+  it('rejects comparing the variable against the wrong literal or with the wrong operator', () => {
+    expect(comparesVariable([print(compare(variable('remainder'), '==', num(1)))], 'remainder', '==', 0)).toBe(false)
+    expect(comparesVariable([print(compare(variable('remainder'), '>', num(0)))], 'remainder', '==', 0)).toBe(false)
+  })
+
+  it('ignores op/against when they are not specified (variable presence is enough)', () => {
+    expect(comparesVariable([print(compare(variable('remainder'), '>', num(5)))], 'remainder')).toBe(true)
+    expect(comparesVariable([print(compare(variable('other'), '==', num(0)))], 'remainder')).toBe(false)
   })
 })

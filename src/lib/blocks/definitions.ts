@@ -187,7 +187,10 @@ export const BLOCK_DEFS: Record<string, BlockDef> = {
     category: 'value',
     // `◇` marks the inline operator dropdown; `⬡` marks each expression slot.
     label: '⬡ ◇ ⬡',
-    fields: [{ name: 'op', kind: 'select', label: 'operator', default: '==', options: ['==', '!=', '<', '>', '<=', '>='] }],
+    // Only the comparison signs the curriculum actually teaches (==, >, <).
+    // The extra comparators (!=, <=, >=) are never taught, so leaving them in
+    // the dropdown would just confuse a true beginner.
+    fields: [{ name: 'op', kind: 'select', label: 'operator', default: '==', options: ['==', '>', '<'] }],
     slots: [
       { name: 'left', kind: 'expression', label: 'left', defaultChild: { type: 'var', fields: { name: 'i' } } },
       { name: 'right', kind: 'expression', label: 'right', defaultChild: { type: 'num', fields: { value: 0 } } },

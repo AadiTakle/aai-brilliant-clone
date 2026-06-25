@@ -82,7 +82,7 @@ Authoritative inventory — confirm against source before editing.
 | 3 | Doing the Math | `l3-doing-the-math.ts` | `+ - * / //` and `%` (remainder); divisible ⇔ remainder 0; `+` joins strings | widgets `remainder_machine`, `multiples_grid`; block `binop` |
 | 4 | True or False | `l4-true-or-false.ts` | Booleans; `== != < > <= >=`; `n % 3 == 0`; light `and/or/not` | widget `comparison_explorer`; block `compare` |
 | 5 | Making Decisions | `l5-making-decisions.ts` | `if/elif/else`; indentation = a block; order matters | widget `branch_visualizer`; blocks `if/elif/else`; type `parsons_problem` |
-| 6 | Again and Again | `over-and-over-again.ts` (refit) | `for` + `range(n)` / `range(start, stop)`; iteration | block `range_n`; reuse `repeated_addition`, `loop_visualizer` |
+| 6 | Again and Again | `l6-over-and-over-again.ts` (refit) | `for` + `range(n)` / `range(start, stop)`; iteration | block `range_n`; reuse `repeated_addition`, `loop_visualizer` |
 | 7 | Loops + Decisions Together | `l7-loops-and-decisions.ts` | `if` inside `for`; decide per number; build a result string with `+` | widget `code_tracer` |
 | 8 | Build Your Own Machine | `l8-build-your-own-machine.ts` | `def`, parameters, `return`; why functions; `print()`/`range()` were functions | reuse `function_machine`; functions taught in `python_sandbox` |
 | 9 | Capstone — FizzBuzzPop | `l9-fizzbuzzpop.ts` | Integrate everything; write from blank editor | grading `requiredConstructs` |

@@ -3,7 +3,7 @@ import { l2BoxesThatRemember } from './l2-boxes-that-remember'
 import { l3DoingTheMath } from './l3-doing-the-math'
 import { l4TrueOrFalse } from './l4-true-or-false'
 import { l5MakingDecisions } from './l5-making-decisions'
-import { overAndOverAgain } from './over-and-over-again'
+import { l6OverAndOverAgain } from './l6-over-and-over-again'
 import { l7LoopsAndDecisions } from './l7-loops-and-decisions'
 import { l8BuildYourOwnMachine } from './l8-build-your-own-machine'
 import { l9FizzBuzzPop } from './l9-fizzbuzzpop'
@@ -19,7 +19,7 @@ export const rawLessons: Record<string, unknown> = {
   [l3DoingTheMath.id]: l3DoingTheMath,
   [l4TrueOrFalse.id]: l4TrueOrFalse,
   [l5MakingDecisions.id]: l5MakingDecisions,
-  [overAndOverAgain.id]: overAndOverAgain,
+  [l6OverAndOverAgain.id]: l6OverAndOverAgain,
   [l7LoopsAndDecisions.id]: l7LoopsAndDecisions,
   [l8BuildYourOwnMachine.id]: l8BuildYourOwnMachine,
   [l9FizzBuzzPop.id]: l9FizzBuzzPop,

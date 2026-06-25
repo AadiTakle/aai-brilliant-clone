@@ -17,6 +17,15 @@ export const parsonsProblemConfigSchema = z.object({
   distractors: z.array(parsonsLineSchema).default([]),
   // When false, only the order is graded (indentation is ignored).
   checkIndent: z.boolean().default(true),
+  // Optional, answer-free hint shown when the ORDER is wrong. Lets a lesson tailor
+  // the nudge (e.g. point back to a very similar worked demo) instead of the
+  // generic "check the order" message. When absent, a generic message is shown.
+  orderHint: z.string().min(1).optional(),
+  // Optional, answer-free hint shown when the ORDER is right but the indentation
+  // is wrong. Lets a lesson tailor the nudge (e.g. "both for and if need their
+  // inside lines indented") without revealing the exact indentation. When absent,
+  // a generic indentation message is shown.
+  indentHint: z.string().min(1).optional(),
 })
 
 export type ParsonsLine = z.infer<typeof parsonsLineSchema>

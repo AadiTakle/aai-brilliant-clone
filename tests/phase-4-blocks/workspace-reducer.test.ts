@@ -70,6 +70,35 @@ describe('[Phase 4] workspace reducer (tap-to-place)', () => {
     expect(state.program).toHaveLength(0)
   })
 
+  it('rejects remove when the workspace is locked (lockBlocks)', () => {
+    let state: WorkspaceState = initialWorkspace(
+      [{ type: 'print', slots: { value: [{ type: 'str', fields: { value: 'Hi' } }] } }],
+      true,
+    )
+    expect(state.locked).toBe(true)
+    const printId = state.program[0].id
+    state = workspaceReducer(state, { kind: 'remove', id: printId })
+    // The block is still there — removal is disabled while locked.
+    expect(state.program).toHaveLength(1)
+    expect(findBlock(state.program, printId)).not.toBeNull()
+  })
+
+  it('still allows editing fields while locked', () => {
+    let state: WorkspaceState = initialWorkspace(
+      [{ type: 'assign', slots: { target: [{ type: 'var', fields: { name: 'word' } }], value: [{ type: 'str', fields: { value: 'Hi' } }] } }],
+      true,
+    )
+    const assignId = state.program[0].id
+    const strId = findBlock(state.program, assignId)!.slots.value[0].id
+    state = workspaceReducer(state, { kind: 'set-field', id: strId, field: 'value', value: 'Hello' })
+    expect(findBlock(state.program, strId)?.fields.value).toBe('Hello')
+  })
+
+  it('defaults to unlocked (remove works) when no lock flag is passed', () => {
+    const state = initialWorkspace([{ type: 'print' }])
+    expect(state.locked).toBe(false)
+  })
+
   it('hydrates nested initial content and resets', () => {
     const state = initialWorkspace([
       {

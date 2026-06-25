@@ -6,6 +6,9 @@ interface BlockViewProps {
   block: WorkspaceBlock
   heldType: string | null
   dispatch: (action: WorkspaceAction) => void
+  // When true, the remove buttons are hidden so the learner can only edit
+  // block contents, not delete blocks.
+  locked?: boolean
 }
 
 function RemoveButton({
@@ -132,7 +135,7 @@ function FieldControl({
  * Renders a block's label, interleaving `⬡` (expression slots, in slot order)
  * and `◇` (inline fields, in field order) placeholders with the literal text.
  */
-function InlineTokens({ block, def, heldType, dispatch }: { block: WorkspaceBlock; def: BlockDef; heldType: string | null; dispatch: BlockViewProps['dispatch'] }) {
+function InlineTokens({ block, def, heldType, dispatch, locked }: { block: WorkspaceBlock; def: BlockDef; heldType: string | null; dispatch: BlockViewProps['dispatch']; locked?: boolean }) {
   const exprSlots = def.slots.filter((s) => s.kind === 'expression')
   const heldIsValue = heldType ? blockCategory(heldType) === 'value' : false
   const tokens = def.label.split(/([⬡◇])/)
@@ -152,6 +155,7 @@ function InlineTokens({ block, def, heldType, dispatch }: { block: WorkspaceBloc
               heldType={heldType}
               heldIsValue={heldIsValue}
               dispatch={dispatch}
+              locked={locked}
             />
           ) : null
         }
@@ -175,18 +179,20 @@ function ExpressionSlot({
   heldType,
   heldIsValue,
   dispatch,
+  locked,
 }: {
   parent: WorkspaceBlock
   slot: BlockSlot
   heldType: string | null
   heldIsValue: boolean
   dispatch: BlockViewProps['dispatch']
+  locked?: boolean
 }) {
   const child = parent.slots[slot.name]?.[0]
   if (child) {
     return (
       <span className="expr-slot is-filled">
-        <BlockView block={child} heldType={heldType} dispatch={dispatch} />
+        <BlockView block={child} heldType={heldType} dispatch={dispatch} locked={locked} />
       </span>
     )
   }
@@ -201,7 +207,7 @@ function ExpressionSlot({
   )
 }
 
-export function BlockView({ block, heldType, dispatch }: BlockViewProps) {
+export function BlockView({ block, heldType, dispatch, locked }: BlockViewProps) {
   const def = getBlockDef(block.type)
   if (!def) return null
 
@@ -209,15 +215,15 @@ export function BlockView({ block, heldType, dispatch }: BlockViewProps) {
     const isLeaf = def.slots.length === 0
     // Leaf values (number/text/variable) are edited inline and are part of the
     // parent block, so they have no remove button. Composite values (range)
-    // can be removed to clear the slot back to a drop target.
+    // can be removed to clear the slot back to a drop target — unless locked.
     return (
       <span className="value-block" data-block-type={block.type}>
         {isLeaf ? (
           <ValueLeaf block={block} def={def} dispatch={dispatch} />
         ) : (
           <span className="value-inline">
-            <InlineTokens block={block} def={def} heldType={heldType} dispatch={dispatch} />
-            <RemoveButton id={block.id} dispatch={dispatch} />
+            <InlineTokens block={block} def={def} heldType={heldType} dispatch={dispatch} locked={locked} />
+            {!locked && <RemoveButton id={block.id} dispatch={dispatch} />}
           </span>
         )}
       </span>
@@ -231,15 +237,15 @@ export function BlockView({ block, heldType, dispatch }: BlockViewProps) {
     <div className="block" data-block-type={block.type}>
       <div className="block-line">
         <code className="block-code">
-          <InlineTokens block={block} def={def} heldType={heldType} dispatch={dispatch} />
+          <InlineTokens block={block} def={def} heldType={heldType} dispatch={dispatch} locked={locked} />
         </code>
-        <RemoveButton id={block.id} dispatch={dispatch} />
+        {!locked && <RemoveButton id={block.id} dispatch={dispatch} />}
       </div>
 
       {statementSlots.map((slot) => (
         <div className="block-body" key={slot.name}>
           {(block.slots[slot.name] ?? []).map((child) => (
-            <BlockView key={child.id} block={child} heldType={heldType} dispatch={dispatch} />
+            <BlockView key={child.id} block={child} heldType={heldType} dispatch={dispatch} locked={locked} />
           ))}
           <DropZone
             id={`target:${block.id}:${slot.name}`}

@@ -56,6 +56,7 @@ export function LessonPage() {
         step={step}
         onComplete={handleComplete}
         onGraded={handleGraded}
+        initiallyComplete={currentComplete}
       />
 
       <div className="lesson-nav">

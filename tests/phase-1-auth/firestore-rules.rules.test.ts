@@ -72,22 +72,22 @@ describe('[Phase 1] firestore.rules', () => {
     it('lets a user read/write their own progress docs', async () => {
       const alice = testEnv.authenticatedContext('alice').firestore()
       await assertSucceeds(
-        setDoc(doc(alice, 'progress/alice_over-and-over-again'), { currentStepIndex: 0 }),
+        setDoc(doc(alice, 'progress/alice_l6-over-and-over-again'), { currentStepIndex: 0 }),
       )
-      await assertSucceeds(getDoc(doc(alice, 'progress/alice_over-and-over-again')))
+      await assertSucceeds(getDoc(doc(alice, 'progress/alice_l6-over-and-over-again')))
     })
 
     it("forbids writing another user's progress", async () => {
       const alice = testEnv.authenticatedContext('alice').firestore()
-      await assertFails(setDoc(doc(alice, 'progress/bob_over-and-over-again'), { currentStepIndex: 0 }))
+      await assertFails(setDoc(doc(alice, 'progress/bob_l6-over-and-over-again'), { currentStepIndex: 0 }))
     })
 
     it("forbids reading another user's progress", async () => {
       await testEnv.withSecurityRulesDisabled(async (ctx) => {
-        await setDoc(doc(ctx.firestore(), 'progress/bob_over-and-over-again'), { currentStepIndex: 1 })
+        await setDoc(doc(ctx.firestore(), 'progress/bob_l6-over-and-over-again'), { currentStepIndex: 1 })
       })
       const alice = testEnv.authenticatedContext('alice').firestore()
-      await assertFails(getDoc(doc(alice, 'progress/bob_over-and-over-again')))
+      await assertFails(getDoc(doc(alice, 'progress/bob_l6-over-and-over-again')))
     })
   })
 })

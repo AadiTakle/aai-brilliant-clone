@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest'
 import { lessonSchema, stepSchema } from '../../src/content/schemas'
 import { articleConfigSchema } from '../../src/problem-types/article/schema'
 import { blockProblemConfigSchema } from '../../src/problem-types/block_problem/schema'
-import { overAndOverAgain } from '../../src/content/lessons/over-and-over-again'
+import { l6OverAndOverAgain as overAndOverAgain } from '../../src/content/lessons/l6-over-and-over-again'
 
 // [Phase 2] Content schemas accept valid and reject invalid
 describe('[Phase 2] lessonSchema', () => {

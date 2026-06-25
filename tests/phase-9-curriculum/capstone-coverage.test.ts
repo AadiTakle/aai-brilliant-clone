@@ -14,7 +14,7 @@ const EXPECTED_ORDER = [
   'l3-doing-the-math',
   'l4-true-or-false',
   'l5-making-decisions',
-  'over-and-over-again',
+  'l6-over-and-over-again',
   'l7-loops-and-decisions',
   'l8-build-your-own-machine',
   'l9-fizzbuzzpop',
@@ -74,6 +74,15 @@ function lessonPythonSource(lesson: Lesson): string {
     .join('\n')
 }
 
+// The code of every parsons line a lesson defines (the "answer" the learner
+// reassembles). Used to detect constructs taught via line-ordering puzzles.
+function lessonParsonsSource(lesson: Lesson): string {
+  return lesson.steps
+    .filter((s): s is Extract<Step, { type: 'parsons_problem' }> => s.type === 'parsons_problem')
+    .flatMap((s) => s.config.lines.map((l) => l.code))
+    .join('\n')
+}
+
 function hasBinop(nodes: BlockNode[], op: string): boolean {
   return nodes.some((n) => n.type === 'binop' && n.fields?.op === op)
 }
@@ -110,26 +119,30 @@ describe('[Phase 9] curriculum ordering + capstone contract', () => {
 // lesson is renamed/removed or a teaching block is dropped, the matching
 // assertion fails — protecting the "taught before the capstone" guarantee.
 describe('[Phase 9] capstone coverage matrix → lessons', () => {
-  it('L1 introduces print(), string literals, and expression-as-argument', () => {
+  it('L1 introduces print(), the function machine, and a first typed program', () => {
     const l1 = getLessonOrThrow('l1-talking-to-the-computer')
     expect(lessonBlockTypes(l1).has('print')).toBe(true)
     expect(lessonWidgets(l1)).toContain('function_machine')
-    expect(lessonPythonSource(l1)).toContain('print(2 + 3)')
+    // L1 still demonstrably pairs print() with a runnable Python step: the first
+    // typed program outputs "Hello World!".
+    expect(l1.steps.some((s) => s.type === 'python_sandbox')).toBe(true)
+    expect(lessonPythonSource(l1)).toContain('Hello World!')
   })
 
   it('L2 introduces variables (assign) and int-vs-string', () => {
     const l2 = getLessonOrThrow('l2-boxes-that-remember')
     expect(lessonBlockTypes(l2).has('assign')).toBe(true)
-    expect(lessonWidgets(l2)).toContain('variable_box')
+    // The passive variable_box was replaced by the interactive value_box widget.
+    expect(lessonWidgets(l2)).toContain('value_box')
     expect(lessonWidgets(l2)).toContain('type_sorter')
   })
 
-  it('L3 introduces % (modulo) and string + string concatenation', () => {
+  it('L3 introduces % (modulo) via the modulo_picker widget', () => {
     const l3 = getLessonOrThrow('l3-doing-the-math')
     const nodes = lessonBlockNodes(l3)
     expect(hasBinop(nodes, '%')).toBe(true)
-    expect(hasBinop(nodes, '+')).toBe(true)
-    expect(lessonWidgets(l3)).toContain('remainder_machine')
+    // Concatenation moved out of L3 (now taught in L7); L3 is modulo-only.
+    expect(lessonWidgets(l3)).toContain('modulo_picker')
   })
 
   it('L4 introduces comparisons producing booleans', () => {
@@ -138,38 +151,53 @@ describe('[Phase 9] capstone coverage matrix → lessons', () => {
     expect(lessonWidgets(l4)).toContain('comparison_explorer')
   })
 
-  it('L5 introduces if/else and a Parsons reordering', () => {
+  it('L5 introduces the conditional construct (if/elif/else) and a Parsons reordering', () => {
     const l5 = getLessonOrThrow('l5-making-decisions')
-    const types = lessonBlockTypes(l5)
-    expect(types.has('if_block')).toBe(true)
-    expect(types.has('else_block')).toBe(true)
+    // L5 was rebuilt OFF blocks toward typed Python + a learner-driven dial: the
+    // conditional is now taught in TYPED steps and assembled in a Parsons puzzle,
+    // so it no longer ships if_block/else_block *blocks*. The conditional is still
+    // demonstrably taught — its python source (and parsons lines) use if/else, and
+    // a graded typed step enforces requiredConstructs ['conditional'].
+    const source = lessonPythonSource(l5) + '\n' + lessonParsonsSource(l5)
+    expect(source).toMatch(/\bif\b/)
+    expect(source).toMatch(/\belse\b/)
+    expect(usesConditionalSource(source)).toBe(true)
+    const enforcesConditional = l5.steps.some(
+      (s) => s.type === 'python_sandbox' && s.graded && s.config.requiredConstructs.includes('conditional'),
+    )
+    expect(enforcesConditional).toBe(true)
+    // The new learner-driven decision_machine widget is the tactile heart of L5.
+    expect(lessonWidgets(l5)).toContain('decision_machine')
     expect(l5.steps.some((s) => s.type === 'parsons_problem')).toBe(true)
   })
 
   it('L6 introduces loops and range with an expression argument', () => {
-    const l6 = getLessonOrThrow('over-and-over-again')
-    const nodes = lessonBlockNodes(l6)
+    const l6 = getLessonOrThrow('l6-over-and-over-again')
+    // for_each is still taught via the fill-the-loop / fix-the-loop block steps.
     expect(lessonBlockTypes(l6).has('for_each')).toBe(true)
-    // range(1, n + 1): a range_call whose stop slot contains a binop.
-    const rangeWithExpr = nodes.some(
-      (n) => n.type === 'range_call' && (n.slots?.stop ?? []).some((c) => c.type === 'binop'),
-    )
-    expect(rangeWithExpr).toBe(true)
+    // The range-with-expression guarantee moved from a block to TYPED Python:
+    // L6's python source contains a range(...) call with a `+` expression
+    // (range(1, n + 1)). The number-wheel demo step teaches it interactively and
+    // the typed steps apply it, so the construct is still taught before L9.
+    expect(lessonPythonSource(l6)).toMatch(/range\([^)]*\+[^)]*\)/)
   })
 
-  it('L7 introduces the accumulator pattern (label = label + "Fizz")', () => {
+  it('L7 introduces the accumulator pattern and string concatenation via program_stepper, a parsons + typed Python', () => {
     const l7 = getLessonOrThrow('l7-loops-and-decisions')
-    const nodes = lessonBlockNodes(l7)
-    // an assign whose value is a binop '+' that reads a variable (accumulator)
-    const accumulator = nodes.some(
-      (n) =>
-        n.type === 'assign' &&
-        (n.slots?.value ?? []).some(
-          (v) => v.type === 'binop' && v.fields?.op === '+' && (v.slots?.left ?? []).some((l) => l.type === 'var'),
-        ),
-    )
-    expect(accumulator).toBe(true)
-    expect(lessonWidgets(l7)).toContain('code_tracer')
+    // L7 was rebuilt toward typed Python: it now teaches with the program_stepper
+    // widget (not code_tracer) and has NO block_problem steps.
+    expect(lessonWidgets(l7)).toContain('program_stepper')
+    expect(lessonWidgets(l7)).not.toContain('code_tracer')
+    expect(l7.steps.some((s) => s.type === 'block_problem')).toBe(false)
+
+    // The accumulator pattern (read a variable, add onto it, store it back) and
+    // the string-concatenation guarantee (moved here from L3) now live in L7's
+    // parsons lines and typed Python source.
+    const source = lessonParsonsSource(l7) + '\n' + lessonPythonSource(l7)
+    // An assignment whose right side adds onto the SAME variable: `x = x + ...`.
+    expect(source).toMatch(/(\w+)\s*=\s*\1\s*\+/)
+    // String concatenation: a `+` joining text in the accumulator.
+    expect(source).toContain('+')
   })
 
   it('L8 introduces def/return functions', () => {

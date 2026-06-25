@@ -20,6 +20,22 @@ export function usesConditionalSource(source: string): boolean {
   return /\bif\b/.test(stripStringsAndComments(source))
 }
 
+/**
+ * Detects an accumulator / "label" pattern: a variable that is built up from
+ * itself. Catches both `label = label + ...` and `label += ...`. Strings and
+ * comments are removed first so the words inside a printed string don't count.
+ * Not a `Construct` (the grader's enforced set stays loop/modulo/conditional);
+ * this is used only to power the capstone's earned "build a label" hint.
+ */
+export function usesAccumulatorSource(source: string): boolean {
+  const s = stripStringsAndComments(source)
+  // `name = name + ...` (same identifier on both sides, then a +).
+  if (/(\b\w+)\s*=\s*\1\b\s*\+/.test(s)) return true
+  // `name += ...`
+  if (/\b\w+\s*\+=/.test(s)) return true
+  return false
+}
+
 const SOURCE_DETECTORS: Record<Construct, (source: string) => boolean> = {
   loop: usesLoopSource,
   modulo: usesModuloSource,

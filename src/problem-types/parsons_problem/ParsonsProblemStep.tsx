@@ -64,11 +64,14 @@ function ParsonsBody({ title, config, onComplete, onGraded }: BodyProps) {
   }
 
   function removeFromSolution(index: number) {
-    setSolution((s) => {
-      const line = s[index]
-      setBank((b) => [...b, { id: line.id, code: line.code, indent: line.indent }])
-      return s.filter((_, i) => i !== index)
-    })
+    // Read the line from the current render's state, then update both lists with
+    // PURE updater functions. (Calling setBank inside the setSolution updater made
+    // it a side effect, so React's StrictMode double-invoked it and the removed
+    // line was added back to the bank twice.)
+    const line = solution[index]
+    if (!line) return
+    setBank((b) => [...b, { id: line.id, code: line.code, indent: line.indent }])
+    setSolution((s) => s.filter((_, i) => i !== index))
     clearResult()
   }
 
@@ -174,8 +177,8 @@ function ParsonsBody({ title, config, onComplete, onGraded }: BodyProps) {
           {result.correct
             ? 'Correct! The lines are in the right order.'
             : !result.orderCorrect
-              ? 'Not quite — check the order of the lines.'
-              : 'The order is right, but check the indentation (use ⇤ / ⇥).'}
+              ? config.orderHint ?? 'Not quite — check the order of the lines.'
+              : config.indentHint ?? 'The order is right, but check the indentation (use ⇤ / ⇥).'}
         </p>
       )}
     </section>

@@ -1,5 +1,5 @@
 import { runPython, type PythonRunner } from '../pyodide/runner'
-import { normalizeOutput } from './outputGrader'
+import { normalizeLenient, normalizeOutput } from './outputGrader'
 import {
   effectiveConstructs,
   missingConstructsSource,
@@ -38,12 +38,13 @@ export async function gradePython(
   source: string,
   testCases: PythonTestCase[],
   runner: PythonRunner = runPython,
-  options: { requireLoop?: boolean; requiredConstructs?: Construct[] } = {},
+  options: { requireLoop?: boolean; requiredConstructs?: Construct[]; lenient?: boolean } = {},
 ): Promise<PythonGradeResult> {
+  const normalize = options.lenient ? normalizeLenient : normalizeOutput
   const results: TestCaseResult[] = []
   for (const tc of testCases) {
     const { stdout, error } = await runner(source, { stdin: tc.stdin })
-    const passed = !error && normalizeOutput(stdout) === normalizeOutput(tc.expectedStdout)
+    const passed = !error && normalize(stdout) === normalize(tc.expectedStdout)
     results.push({
       passed,
       stdin: tc.stdin,

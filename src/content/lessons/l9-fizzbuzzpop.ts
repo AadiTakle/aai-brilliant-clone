@@ -31,10 +31,6 @@ export const l9FizzBuzzPop = {
               },
             },
           },
-          {
-            text:
-              'Hint: build a `label` string. Start it empty, add "Fizz"/"Buzz"/"Pop" with separate `if`s, then print the number when the label is still empty, otherwise print the label.',
-          },
         ],
       },
     },
@@ -45,16 +41,16 @@ export const l9FizzBuzzPop = {
       graded: true,
       config: {
         prompt:
-          'Write the full program for n = 21. Use a loop, the % operator, and ifs. Build a label for each number and print the number or the label.',
-        starterCode: 'n = 21\n# Your FizzBuzzPop goes here\n',
+          'FizzBuzzPop — the finale! Print the numbers 1 to 21, one per line. The rules: a multiple of 3 prints Fizz; a multiple of 5 prints Buzz; a multiple of 7 prints Pop. If a number matches more than one rule, join them in that order — so 15 prints FizzBuzz and 21 prints FizzPop. If it matches no rule, print the number itself. Start from n = 21. Everything you need, you have already used.',
+        starterCode: 'n = 21\n# Write your FizzBuzzPop here\n',
         requiredConstructs: ['loop', 'modulo', 'conditional'],
+        successMessage:
+          'You did it — you wrote FizzBuzzPop from scratch! That is the whole arc come together: a loop, the % operator, ifs, and a label you built up yourself. Real programmers solve problems exactly like this. 🎉',
         testCases: [
           {
             stdin: '',
             expectedStdout:
               '1\n2\nFizz\n4\nBuzz\nFizz\nPop\n8\nFizz\nBuzz\n11\nFizz\n13\nPop\nFizzBuzz\n16\n17\nFizz\n19\nBuzz\nFizzPop',
-            feedback:
-              'Start label = "", add Fizz/Buzz/Pop with three separate ifs, then print(i) if label == "" else print(label).',
           },
         ],
       },

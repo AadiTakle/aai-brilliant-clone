@@ -12,6 +12,9 @@ export interface WorkspaceState {
   program: WorkspaceBlock[]
   // The block type the user has "picked up" (tap-to-place step 1), if any.
   held: string | null
+  // When true, blocks cannot be removed — the learner may only edit their
+  // contents (used by fill-in-the-blank steps with `lockBlocks`).
+  locked: boolean
 }
 
 // A drop location: append into a slot. Root program uses parentId === null.
@@ -121,8 +124,8 @@ export function findBlock(blocks: WorkspaceBlock[], id: string): WorkspaceBlock 
   return null
 }
 
-export function initialWorkspace(initial: CodeNode[] = []): WorkspaceState {
-  return { program: hydrate(initial), held: null }
+export function initialWorkspace(initial: CodeNode[] = [], locked = false): WorkspaceState {
+  return { program: hydrate(initial), held: null, locked }
 }
 
 export function workspaceReducer(
@@ -135,7 +138,7 @@ export function workspaceReducer(
     case 'place': {
       if (!state.held) return state
       const block = makeBlock(state.held)
-      return { program: insertInto(state.program, action.target, block), held: null }
+      return { ...state, program: insertInto(state.program, action.target, block), held: null }
     }
     case 'set-field':
       return {
@@ -147,9 +150,11 @@ export function workspaceReducer(
         ),
       }
     case 'remove':
+      // While locked, blocks may only be edited, never removed.
+      if (state.locked) return state
       return { ...state, program: removeById(state.program, action.id) }
     case 'reset':
-      return { program: action.program ?? [], held: null }
+      return { ...state, program: action.program ?? [], held: null }
     default:
       return state
   }
