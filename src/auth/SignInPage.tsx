@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react'
+import { useRef, useState, type FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { FirebaseError } from 'firebase/app'
 import { useAuth } from './useAuth'
@@ -13,13 +13,19 @@ export function SignInPage() {
   const [errors, setErrors] = useState<SignInErrors>({})
   const [formError, setFormError] = useState('')
   const [submitting, setSubmitting] = useState(false)
+  const emailRef = useRef<HTMLInputElement>(null)
+  const passwordRef = useRef<HTMLInputElement>(null)
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
     setFormError('')
     const nextErrors = validateSignIn(email, password)
     setErrors(nextErrors)
-    if (Object.keys(nextErrors).length > 0) return
+    if (Object.keys(nextErrors).length > 0) {
+      if (nextErrors.email) emailRef.current?.focus()
+      else if (nextErrors.password) passwordRef.current?.focus()
+      return
+    }
 
     setSubmitting(true)
     try {
@@ -35,12 +41,16 @@ export function SignInPage() {
 
   return (
     <main className="auth-page">
-      <h1>Sign in</h1>
+      <h1>Sign In</h1>
       <form onSubmit={handleSubmit} noValidate>
         <label>
           Email
           <input
+            ref={emailRef}
             type="email"
+            name="email"
+            autoComplete="username"
+            spellCheck={false}
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             aria-invalid={Boolean(errors.email)}
@@ -51,7 +61,10 @@ export function SignInPage() {
         <label>
           Password
           <input
+            ref={passwordRef}
             type="password"
+            name="password"
+            autoComplete="current-password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             aria-invalid={Boolean(errors.password)}

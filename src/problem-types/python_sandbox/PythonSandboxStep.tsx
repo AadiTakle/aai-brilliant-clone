@@ -10,16 +10,16 @@ import { diagnose } from '../../lib/grading/diagnostics'
 import { useResolvedTheme } from '../../theme/useResolvedTheme'
 
 // Symbols/snippets that are awkward to type on mobile keyboards.
-const SYMBOLS: { label: string; insert: string }[] = [
-  { label: '⇥', insert: '    ' },
-  { label: ':', insert: ':' },
-  { label: '( )', insert: '()' },
-  { label: '"', insert: '""' },
-  { label: '[ ]', insert: '[]' },
-  { label: '=', insert: '=' },
-  { label: 'print', insert: 'print()' },
-  { label: 'range', insert: 'range()' },
-  { label: 'input', insert: 'input()' },
+const SYMBOLS: { label: string; insert: string; desc: string }[] = [
+  { label: '⇥', insert: '    ', desc: 'Insert indent' },
+  { label: ':', insert: ':', desc: 'Insert colon' },
+  { label: '( )', insert: '()', desc: 'Insert parentheses' },
+  { label: '"', insert: '""', desc: 'Insert quotes' },
+  { label: '[ ]', insert: '[]', desc: 'Insert brackets' },
+  { label: '=', insert: '=', desc: 'Insert equals' },
+  { label: 'print', insert: 'print()', desc: 'Insert print()' },
+  { label: 'range', insert: 'range()', desc: 'Insert range()' },
+  { label: 'input', insert: 'input()', desc: 'Insert input()' },
 ]
 
 interface BodyProps {
@@ -85,7 +85,13 @@ function PythonSandboxBody({ title, config, onComplete, onGraded }: BodyProps) {
 
       <div className="symbol-toolbar" aria-label="Symbol toolbar">
         {SYMBOLS.map((s) => (
-          <button key={s.label} type="button" className="symbol-key" onClick={() => insertSymbol(s.insert)}>
+          <button
+            key={s.label}
+            type="button"
+            className="symbol-key"
+            aria-label={s.desc}
+            onClick={() => insertSymbol(s.insert)}
+          >
             {s.label}
           </button>
         ))}
@@ -117,17 +123,25 @@ function PythonSandboxBody({ title, config, onComplete, onGraded }: BodyProps) {
         </button>
       </div>
 
-      {running && <p className="muted">Loading Python the first time can take a few seconds…</p>}
+      {running && (
+        <p className="muted" aria-live="polite">
+          Loading Python the first time can take a few seconds…
+        </p>
+      )}
 
       {output !== null && (
         <pre className="console" aria-label="output">
           {output.trim() ? output : '(no output)'}
         </pre>
       )}
-      {error && <p className="feedback feedback-incorrect">Error: {error}</p>}
+      {error && (
+        <p role="alert" className="feedback feedback-incorrect">
+          Error: {error}
+        </p>
+      )}
 
       {grade && (
-        <div className="test-results" aria-label="Test results">
+        <div className="test-results" aria-label="Test results" aria-live="polite">
           {grade.results.map((r, i) => (
             <div key={i} className={`test-result ${r.passed ? 'is-pass' : 'is-fail'}`}>
               <div className="test-result-head">

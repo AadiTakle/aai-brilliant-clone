@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../auth/useAuth'
 import { useTheme } from '../theme/useTheme'
@@ -13,6 +13,24 @@ export function Nav() {
   const navigate = useNavigate()
   const [menuOpen, setMenuOpen] = useState(false)
   const [streakOpen, setStreakOpen] = useState(false)
+  const accountMenuRef = useRef<HTMLDivElement>(null)
+
+  // Close the account dropdown on outside-click or Escape.
+  useEffect(() => {
+    if (!menuOpen) return
+    const onPointerDown = (e: PointerEvent) => {
+      if (!accountMenuRef.current?.contains(e.target as Node)) setMenuOpen(false)
+    }
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setMenuOpen(false)
+    }
+    document.addEventListener('pointerdown', onPointerDown)
+    document.addEventListener('keydown', onKey)
+    return () => {
+      document.removeEventListener('pointerdown', onPointerDown)
+      document.removeEventListener('keydown', onKey)
+    }
+  }, [menuOpen])
 
   async function handleLogout() {
     setMenuOpen(false)
@@ -22,7 +40,7 @@ export function Nav() {
 
   return (
     <nav className="nav">
-      <Link to="/" className="nav-brand">
+      <Link to="/" className="nav-brand" translate="no">
         Pyxel
       </Link>
 
@@ -42,7 +60,7 @@ export function Nav() {
           </div>
         )}
         {user ? (
-          <div className="account-menu">
+          <div className="account-menu" ref={accountMenuRef}>
             <button
               type="button"
               className="account-trigger"

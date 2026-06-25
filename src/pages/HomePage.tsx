@@ -38,7 +38,7 @@ export function HomePage() {
   return (
     <main className="home">
       <header className="home-header">
-        <h1>Learn Python interactively</h1>
+        <h1>Learn Python Interactively</h1>
         <p>Short, hands-on lessons that teach by doing.</p>
       </header>
 
@@ -57,7 +57,7 @@ export function HomePage() {
             return (
               <article key={lesson.id} className="lesson-card">
                 <h2>{lesson.title}</h2>
-                <p>{total} steps</p>
+                <p>{total}&nbsp;steps</p>
                 {user && <ProgressBar completed={done} total={total} />}
                 {user ? (
                   <Link to={`/lessons/${lesson.id}/step/${targetIndex}`} className="lesson-start">

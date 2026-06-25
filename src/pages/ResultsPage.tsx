@@ -53,7 +53,9 @@ export function ResultsPage() {
   if (loading || !progress) {
     return (
       <main className="results">
-        <p>Loading your results…</p>
+        <p role="status" aria-live="polite">
+          Loading your results…
+        </p>
       </main>
     )
   }

@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import { weekActivity } from '../lib/progress/week'
 import { StreakBadge } from './StreakBadge'
 
@@ -11,12 +11,46 @@ export function StreakModal({
   activeDays: string[]
   onClose: () => void
 }) {
+  const dialogRef = useRef<HTMLDivElement>(null)
+
   useEffect(() => {
+    const previouslyFocused = document.activeElement as HTMLElement | null
+    const dialog = dialogRef.current
+    const focusable = dialog?.querySelectorAll<HTMLElement>(
+      'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
+    )
+    // Move focus into the dialog so keyboard users start inside it.
+    focusable?.[0]?.focus()
+
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose()
+      if (e.key === 'Escape') {
+        onClose()
+        return
+      }
+      // Trap Tab focus within the dialog.
+      if (e.key === 'Tab' && focusable && focusable.length > 0) {
+        const first = focusable[0]
+        const last = focusable[focusable.length - 1]
+        if (e.shiftKey && document.activeElement === first) {
+          e.preventDefault()
+          last.focus()
+        } else if (!e.shiftKey && document.activeElement === last) {
+          e.preventDefault()
+          first.focus()
+        }
+      }
     }
     window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
+
+    // Lock background scroll while the dialog is open.
+    const prevOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+
+    return () => {
+      window.removeEventListener('keydown', onKey)
+      document.body.style.overflow = prevOverflow
+      previouslyFocused?.focus?.()
+    }
   }, [onClose])
 
   const days = weekActivity(activeDays)
@@ -25,6 +59,7 @@ export function StreakModal({
   return (
     <div className="modal-overlay" role="presentation" onClick={onClose}>
       <div
+        ref={dialogRef}
         className="modal streak-modal"
         role="dialog"
         aria-modal="true"

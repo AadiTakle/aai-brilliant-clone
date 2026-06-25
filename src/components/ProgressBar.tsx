@@ -14,6 +14,7 @@ export function ProgressBar({ completed, total, label }: ProgressBarProps) {
         aria-valuenow={completed}
         aria-valuemin={0}
         aria-valuemax={total}
+        aria-valuetext={`${completed} of ${total} steps`}
       >
         <div className="progress-bar-fill" style={{ width: `${pct}%` }} />
       </div>

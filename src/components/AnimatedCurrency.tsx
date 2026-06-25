@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useCountUp } from './useCountUp'
 import { CURRENCY_GLYPH, CURRENCY_NAME } from './Currency'
+import { formatCurrency } from '../lib/ui/currency'
 
 /**
  * Sparks total that animates when it grows: a floating "+N" rises from below
@@ -24,7 +25,7 @@ export function AnimatedCurrency({ amount }: { amount: number }) {
       <span className="currency-icon" aria-hidden="true">
         {CURRENCY_GLYPH}
       </span>
-      <span className="currency-amount">{display}</span>
+      <span className="currency-amount">{formatCurrency(display)}</span>
       {gain && (
         <span key={gain.key} className="currency-gain" aria-hidden="true">
           +{gain.delta}

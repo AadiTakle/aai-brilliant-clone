@@ -10,8 +10,13 @@ function App() {
     <ThemeProvider>
       <AuthProvider>
         <BrowserRouter>
+          <a href="#main-content" className="skip-link">
+            Skip to main content
+          </a>
           <Nav />
-          <AppRoutes />
+          <div id="main-content" tabIndex={-1}>
+            <AppRoutes />
+          </div>
         </BrowserRouter>
       </AuthProvider>
     </ThemeProvider>

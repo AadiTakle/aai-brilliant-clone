@@ -61,6 +61,7 @@
 
   --maxw: 980px;
 
+  color-scheme: light;
   font-family: var(--font-body);
   line-height: 1.5;
   font-weight: 400;
@@ -102,6 +103,12 @@
   box-sizing: border-box;
 }
 
+html {
+  /* Remove the 300ms tap delay and the grey tap flash on touch devices. */
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
 body {
   margin: 0;
   min-height: 100vh;
@@ -114,6 +121,40 @@ body {
   flex-direction: column;
 }
 
+/* Wrapper around routed pages: keep the page <main> filling remaining height. */
+#main-content {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+}
+
+/* Skip link: hidden off-screen until focused via keyboard. */
+.skip-link {
+  position: absolute;
+  left: var(--space-2);
+  top: -3rem;
+  z-index: 100;
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius-sm);
+  background: var(--color-primary);
+  color: var(--color-on-primary);
+  font-weight: 700;
+  transition: top 0.15s ease;
+}
+
+.skip-link:focus-visible {
+  top: var(--space-2);
+  text-decoration: none;
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(75, 139, 190, 0.35);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skip-link {
+    transition: none;
+  }
+}
+
 h1,
 h2,
 h3 {
@@ -122,6 +163,8 @@ h3 {
   font-weight: 600;
   line-height: 1.2;
   margin: 0 0 var(--space-3);
+  /* Avoid single-word last lines (widows) on headings. */
+  text-wrap: balance;
 }
 
 h1 {
