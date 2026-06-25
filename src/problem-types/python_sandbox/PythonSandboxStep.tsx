@@ -37,6 +37,7 @@ function PythonSandboxBody({ title, config, onComplete, onGraded }: BodyProps) {
   const [output, setOutput] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [grade, setGrade] = useState<PythonGradeResult | null>(null)
+  const [solved, setSolved] = useState(false)
 
   const graded = isPythonGraded(config.testCases)
 
@@ -64,11 +65,15 @@ function PythonSandboxBody({ title, config, onComplete, onGraded }: BodyProps) {
         })
         setGrade(result)
         onGraded?.({ correct: result.passed })
-        if (result.passed) onComplete?.()
+        if (result.passed) {
+          setSolved(true)
+          onComplete?.()
+        }
       } else {
         const { stdout, error: runError } = await runPython(code)
         setOutput(stdout)
         setError(runError)
+        setSolved(true)
         onComplete?.()
       }
     } catch (e) {
@@ -79,7 +84,10 @@ function PythonSandboxBody({ title, config, onComplete, onGraded }: BodyProps) {
   }
 
   return (
-    <section className="problem problem-python" data-step-type="python_sandbox">
+    <section
+      className={`problem problem-python${solved ? ' is-energized' : ''}`}
+      data-step-type="python_sandbox"
+    >
       {title && <h2>{title}</h2>}
       <p className="block-prompt">{config.prompt}</p>
 
@@ -110,13 +118,16 @@ function PythonSandboxBody({ title, config, onComplete, onGraded }: BodyProps) {
       </div>
 
       <div className="block-actions">
-        <button type="button" onClick={run} disabled={running}>
+        <button type="button" className="btn-machine" onClick={run} disabled={running}>
           {running ? 'Running…' : 'Run'}
         </button>
         <button
           type="button"
-          className="ghost"
-          onClick={() => setCode(config.starterCode)}
+          className="btn-ghost"
+          onClick={() => {
+            setSolved(false)
+            setCode(config.starterCode)
+          }}
           disabled={running}
         >
           Reset code

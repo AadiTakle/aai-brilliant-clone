@@ -1,11 +1,15 @@
 import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
+import { motion } from 'motion/react'
 import { db } from '../firebase/config'
 import { useAuth } from '../auth/useAuth'
-import { getLesson } from '../content/loader'
+import { getLesson, listLessons } from '../content/loader'
 import { ProgressBar } from '../components/ProgressBar'
-import { Currency } from '../components/Currency'
+import { Currency, CURRENCY_GLYPH, CURRENCY_NAME } from '../components/Currency'
 import { StreakBadge } from '../components/StreakBadge'
+import { useCountUp } from '../components/useCountUp'
+import { useReducedMotion } from '../lib/ui/motion'
+import { getLessonMeta } from '../content/course'
 import { loadLessonProgress } from '../lib/progress/store'
 import {
   completedCount,
@@ -15,6 +19,34 @@ import {
   type LessonProgress,
 } from '../lib/progress/model'
 
+const SHOWER_COUNT = 16
+
+/** A short, bounded rain of sparks for the "machine complete" moment. */
+function SparkShower() {
+  const reduced = useReducedMotion()
+  if (reduced) return null
+  return (
+    <div className="spark-shower" aria-hidden="true">
+      {Array.from({ length: SHOWER_COUNT }).map((_, i) => (
+        <motion.span
+          key={i}
+          className="spark-shower-bit"
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: [0, 1, 1, 0], y: [-20, 120, 220, 320] }}
+          transition={{
+            duration: 1.8 + (i % 5) * 0.25,
+            delay: (i % 8) * 0.12,
+            ease: 'easeIn',
+          }}
+          style={{ left: `${(i / SHOWER_COUNT) * 100}%` }}
+        >
+          {CURRENCY_GLYPH}
+        </motion.span>
+      ))}
+    </div>
+  )
+}
+
 export function ResultsPage() {
   const params = useParams()
   const lessonId = params.lessonId ?? ''
@@ -22,6 +54,8 @@ export function ResultsPage() {
   const lesson = getLesson(lessonId)
   const [progress, setProgress] = useState<LessonProgress | null>(null)
   const [loading, setLoading] = useState(true)
+  const [sparkTarget, setSparkTarget] = useState(0)
+  const sparks = useCountUp(sparkTarget)
 
   useEffect(() => {
     let cancelled = false
@@ -32,7 +66,9 @@ export function ResultsPage() {
       }
       const stored = await loadLessonProgress(db, user.uid, lesson.id)
       if (cancelled) return
-      setProgress(stored ?? emptyProgress(lesson.version))
+      const loaded = stored ?? emptyProgress(lesson.version)
+      setProgress(loaded)
+      setSparkTarget(pointsEarned(loaded))
       setLoading(false)
     }
     load()
@@ -60,26 +96,36 @@ export function ResultsPage() {
     )
   }
 
-  const earned = pointsEarned(progress)
   const done = completedCount(progress, lesson)
   const complete = isLessonComplete(progress, lesson)
+  const meta = getLessonMeta(lesson.id, lesson.title)
+  const lessons = listLessons()
+  const idx = lessons.findIndex((l) => l.id === lesson.id)
+  const nextLesson = complete && idx >= 0 && idx < lessons.length - 1 ? lessons[idx + 1] : null
 
   return (
-    <main className="results">
-      <header className="results-header">
-        <p className="results-eyebrow">{complete ? 'Lesson complete!' : 'Progress so far'}</p>
-        <h1>{lesson.title}</h1>
+    <main className={`results${complete ? ' is-complete' : ''}`}>
+      {complete && <SparkShower />}
+
+      <header className="results-hero">
+        <span className={`results-hero-icon${complete ? ' is-energized' : ''}`} aria-hidden="true">
+          {meta.icon}
+        </span>
+        <p className="results-eyebrow">{complete ? 'Machine complete!' : 'Progress so far'}</p>
+        <h1>{meta.shortTitle}</h1>
       </header>
+
+      <div className="results-spark-hero" title={`${CURRENCY_NAME} earned this lesson`}>
+        <span className="results-spark-glyph" aria-hidden="true">
+          {CURRENCY_GLYPH}
+        </span>
+        <span className="results-spark-count">{sparks}</span>
+        <span className="results-spark-label">Sparks earned this lesson</span>
+      </div>
 
       <ProgressBar completed={done} total={lesson.steps.length} label="Steps completed" />
 
       <div className="results-stats">
-        <div className="results-stat">
-          <span className="results-stat-value">
-            <Currency amount={earned} />
-          </span>
-          <span className="results-stat-label">Sparks this lesson</span>
-        </div>
         <div className="results-stat">
           <span className="results-stat-value">
             <Currency amount={profile?.totalPoints ?? 0} />
@@ -95,12 +141,18 @@ export function ResultsPage() {
       </div>
 
       <div className="results-actions">
-        <Link to={`/lessons/${lesson.id}/step/0`} className="ghost">
+        <Link to={`/lessons/${lesson.id}/step/0`} className="btn-ghost results-review">
           Review lesson
         </Link>
-        <Link to="/?view=map" className="lesson-finish">
-          Back to course
-        </Link>
+        {nextLesson ? (
+          <Link to={`/lessons/${nextLesson.id}/step/0`} className="lesson-finish btn-machine">
+            Next lesson ▸
+          </Link>
+        ) : (
+          <Link to="/?view=map" className="lesson-finish btn-machine">
+            Back to course
+          </Link>
+        )}
       </div>
     </main>
   )

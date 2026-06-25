@@ -1,5 +1,7 @@
 import { useState } from 'react'
 import type { CheckpointBlock } from './schema'
+import { WidgetFrame } from './widgets/WidgetFrame'
+import { useReducedMotion } from '../../lib/ui/motion'
 
 interface CheckpointProps {
   block: CheckpointBlock
@@ -7,6 +9,7 @@ interface CheckpointProps {
 }
 
 export function Checkpoint({ block, onComplete }: CheckpointProps) {
+  const reduced = useReducedMotion()
   const [selected, setSelected] = useState<number | null>(null)
   const [result, setResult] = useState<'correct' | 'incorrect' | null>(null)
 
@@ -21,9 +24,18 @@ export function Checkpoint({ block, onComplete }: CheckpointProps) {
   }
 
   const solved = result === 'correct'
+  const status = solved ? 'done' : selected !== null || result ? 'running' : 'idle'
 
   return (
-    <div className="checkpoint" data-block="checkpoint">
+    <WidgetFrame
+      kind="checkpoint"
+      icon="✅"
+      title="Checkpoint"
+      status={status}
+      reduced={reduced}
+      className="widget-checkpoint checkpoint"
+      dataAttrs={{ 'data-block': 'checkpoint' }}
+    >
       <p className="checkpoint-prompt">{block.prompt}</p>
       <ul className="checkpoint-choices">
         {block.choices.map((choice, i) => {
@@ -46,7 +58,7 @@ export function Checkpoint({ block, onComplete }: CheckpointProps) {
       </ul>
 
       {!solved && (
-        <button type="button" onClick={check} disabled={selected === null}>
+        <button type="button" className="btn-machine" onClick={check} disabled={selected === null}>
           Check
         </button>
       )}
@@ -61,6 +73,6 @@ export function Checkpoint({ block, onComplete }: CheckpointProps) {
           {block.feedback?.incorrect ?? 'Not quite — try again.'}
         </p>
       )}
-    </div>
+    </WidgetFrame>
   )
 }

@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react'
 import { remainderMachineConfigSchema } from '../schema'
+import { WidgetFrame } from './WidgetFrame'
+import { useReducedMotion } from '../../../lib/ui/motion'
 
 interface Props {
   config: unknown
@@ -11,8 +13,10 @@ interface Props {
 // test divisibility in FizzBuzz.
 export function RemainderMachine({ config, onComplete }: Props) {
   const { divisor, max, caption } = remainderMachineConfigSchema.parse(config)
+  const reduced = useReducedMotion()
   const [n, setN] = useState(1)
   const done = n >= max
+  const status = done ? 'done' : n > 1 ? 'running' : 'idle'
 
   useEffect(() => {
     if (done) onComplete?.()
@@ -22,7 +26,15 @@ export function RemainderMachine({ config, onComplete }: Props) {
   const isMultiple = remainder === 0
 
   return (
-    <div className="widget widget-remainder-machine" data-widget="remainder_machine">
+    <WidgetFrame
+      kind="remainder_machine"
+      icon="➗"
+      title="Remainder Machine"
+      status={status}
+      reduced={reduced}
+      className="widget-remainder-machine"
+      caption={caption}
+    >
       <div className={`rm-readout${isMultiple ? ' is-multiple' : ''}`} aria-live="polite">
         <code>
           {n} % {divisor} = {remainder}
@@ -31,10 +43,15 @@ export function RemainderMachine({ config, onComplete }: Props) {
       </div>
 
       <div className="rm-controls">
-        <button type="button" onClick={() => setN((v) => Math.min(v + 1, max))} disabled={done}>
+        <button
+          type="button"
+          className="btn-machine"
+          onClick={() => setN((v) => Math.min(v + 1, max))}
+          disabled={done}
+        >
           Next number
         </button>
-        <button type="button" className="ghost" onClick={() => setN(1)} disabled={n === 1}>
+        <button type="button" className="btn-ghost" onClick={() => setN(1)} disabled={n === 1}>
           Reset
         </button>
         <span className="rm-progress">
@@ -42,12 +59,11 @@ export function RemainderMachine({ config, onComplete }: Props) {
         </span>
       </div>
 
-      {caption && <p className="widget-caption">{caption}</p>}
       {done && (
         <p role="status" className="feedback feedback-correct">
           When <code>n % {divisor}</code> is <code>0</code>, n divides evenly by {divisor}.
         </p>
       )}
-    </div>
+    </WidgetFrame>
   )
 }

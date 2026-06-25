@@ -12,10 +12,19 @@ import {
 import { commitStepRewards, loadLessonProgress, saveLessonProgress } from './store'
 import { isoDay } from './streak'
 
+export interface RecordStepOutcome {
+  /** Sparks awarded by this submission (0 if wrong or already completed). */
+  pointsDelta: number
+  /** True when this submission flipped the step to completed. */
+  justCompleted: boolean
+  /** True when the lesson is now fully complete. */
+  lessonComplete: boolean
+}
+
 export interface UseLessonProgress {
   progress: LessonProgress
   loading: boolean
-  recordStep: (step: Step, correct: boolean, submission?: unknown) => Promise<void>
+  recordStep: (step: Step, correct: boolean, submission?: unknown) => Promise<RecordStepOutcome>
   setCurrentStep: (index: number) => void
 }
 
@@ -66,8 +75,10 @@ export function useLessonProgress(lesson: Lesson | null): UseLessonProgress {
   }, [user, lesson])
 
   const recordStep = useCallback(
-    async (step: Step, correct: boolean, submission?: unknown) => {
-      if (!user || !lesson) return
+    async (step: Step, correct: boolean, submission?: unknown): Promise<RecordStepOutcome> => {
+      if (!user || !lesson) {
+        return { pointsDelta: 0, justCompleted: false, lessonComplete: false }
+      }
       const { progress: next, pointsDelta, justCompleted } = applyResult(progressRef.current, {
         stepId: step.id,
         graded: step.graded,
@@ -79,6 +90,7 @@ export function useLessonProgress(lesson: Lesson | null): UseLessonProgress {
       })
       progressRef.current = next
       setProgress(next)
+      const lessonComplete = isLessonComplete(next, lesson)
       try {
         await saveLessonProgress(db, user.uid, lesson.id, next)
         if (justCompleted) {
@@ -86,13 +98,14 @@ export function useLessonProgress(lesson: Lesson | null): UseLessonProgress {
             pointsDelta,
             today: isoDay(),
             lessonId: lesson.id,
-            lessonComplete: isLessonComplete(next, lesson),
+            lessonComplete,
           })
           await refreshProfile()
         }
       } catch (err) {
         console.warn('Failed to persist lesson progress', err)
       }
+      return { pointsDelta, justCompleted, lessonComplete }
     },
     [user, lesson, refreshProfile],
   )

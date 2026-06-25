@@ -1,16 +1,11 @@
 import { useEffect, useState } from 'react'
 import { valueBoxConfigSchema } from '../schema'
+import { WidgetFrame } from './WidgetFrame'
+import { useReducedMotion } from '../../../lib/ui/motion'
 
 interface Props {
   config: unknown
   onComplete?: () => void
-}
-
-// Does the user prefer reduced motion? When true we skip the slide animation and
-// snap the value into place. Guarded so it works in non-browser test envs.
-function prefersReducedMotion(): boolean {
-  if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return false
-  return window.matchMedia('(prefers-reduced-motion: reduce)').matches
 }
 
 // An interactive variable box. A few PRESET values sit above a labelled box; the
@@ -21,7 +16,7 @@ function prefersReducedMotion(): boolean {
 // quotes). Respects prefers-reduced-motion (instant snap, no slide).
 export function ValueBox({ config, onComplete }: Props) {
   const { name, options, valueType, requiredDrops, caption } = valueBoxConfigSchema.parse(config)
-  const [reduced] = useState(prefersReducedMotion)
+  const reduced = useReducedMotion()
   // The value currently held in the box (null = empty), how many drops so far,
   // and which preset is mid-drag (so a drop works even where dataTransfer isn't).
   const [stored, setStored] = useState<string | number | null>(null)
@@ -42,11 +37,17 @@ export function ValueBox({ config, onComplete }: Props) {
     setDragging(null)
   }
 
+  const status = done ? 'done' : drops > 0 ? 'running' : 'idle'
+
   return (
-    <div
-      className="widget widget-value-box"
-      data-widget="value_box"
-      data-motion={reduced ? 'reduced' : 'full'}
+    <WidgetFrame
+      kind="value_box"
+      icon="📦"
+      title="Value Box"
+      status={status}
+      reduced={reduced}
+      className="widget-value-box"
+      caption={caption}
     >
       <div className="vbx-options" aria-label="values to drag">
         {options.map((opt, i) => (
@@ -93,12 +94,11 @@ export function ValueBox({ config, onComplete }: Props) {
         {stored === null ? <code>{name} = ?</code> : <code>{name} = {display(stored)}</code>}
       </p>
 
-      {caption && <p className="widget-caption">{caption}</p>}
       {done && (
         <p role="status" className="feedback feedback-correct">
           The box only ever holds the most recent value — each new value you drop in replaces the old one.
         </p>
       )}
-    </div>
+    </WidgetFrame>
   )
 }

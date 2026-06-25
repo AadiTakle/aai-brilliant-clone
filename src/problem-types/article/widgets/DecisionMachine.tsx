@@ -1,16 +1,12 @@
 import { useEffect, useState } from 'react'
 import { decisionMachineConfigSchema } from '../schema'
 import { NumberWheel } from './NumberWheel'
+import { WidgetFrame } from './WidgetFrame'
+import { useReducedMotion } from '../../../lib/ui/motion'
 
 interface Props {
   config: unknown
   onComplete?: () => void
-}
-
-// Does the user prefer reduced motion? Guarded so it works in non-browser tests.
-function prefersReducedMotion(): boolean {
-  if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return false
-  return window.matchMedia('(prefers-reduced-motion: reduce)').matches
 }
 
 function clamp(n: number, lo: number, hi: number): number {
@@ -26,7 +22,7 @@ function clamp(n: number, lo: number, hi: number): number {
 export function DecisionMachine({ config, onComplete }: Props) {
   const { variable, conditions, hasElse, elseLabel, max, initial, caption } =
     decisionMachineConfigSchema.parse(config)
-  const [reduced] = useState(prefersReducedMotion)
+  const reduced = useReducedMotion()
   const [n, setN] = useState(() => clamp(initial, 0, max))
 
   // The first condition whose divisor divides n; -1 means "no branch matched".
@@ -64,11 +60,17 @@ export function DecisionMachine({ config, onComplete }: Props) {
     if (done) onComplete?.()
   }, [done, onComplete])
 
+  const status = done ? 'done' : seen.size > 1 ? 'running' : 'idle'
+
   return (
-    <div
-      className="widget widget-decision-machine"
-      data-widget="decision_machine"
-      data-motion={reduced ? 'reduced' : 'full'}
+    <WidgetFrame
+      kind="decision_machine"
+      icon="🔀"
+      title="Decision Machine"
+      status={status}
+      reduced={reduced}
+      className="widget-decision-machine"
+      caption={caption}
     >
       <div className="dm-stage">
         <div className="dm-dial">
@@ -108,13 +110,12 @@ export function DecisionMachine({ config, onComplete }: Props) {
         </pre>
       </div>
 
-      {caption && <p className="widget-caption">{caption}</p>}
       <p className="dm-hint muted">Scroll the dial to change the input. Watch which line lights up — and what prints.</p>
       {done && (
         <p role="status" className="feedback feedback-correct">
           Python checks the lines from the top and runs the first one whose question is True.
         </p>
       )}
-    </div>
+    </WidgetFrame>
   )
 }

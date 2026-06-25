@@ -196,6 +196,12 @@
   cursor: not-allowed;
 }
 
+/* Stay transparent on hover — the scale-up below is the affordance. Overrides
+   the global `button:hover` fill so the blue never clashes with the labels. */
+.node-button:hover:not(:disabled) {
+  background: transparent;
+}
+
 .node-core {
   position: relative;
   width: 96px;

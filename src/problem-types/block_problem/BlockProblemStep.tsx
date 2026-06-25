@@ -37,6 +37,7 @@ function BlockProblemBody({ title, config, onComplete, onGraded }: BodyProps) {
   const [missing, setMissing] = useState<Construct[]>([])
   const [printVarMissing, setPrintVarMissing] = useState(false)
   const [compareMissing, setCompareMissing] = useState(false)
+  const [solved, setSolved] = useState(false)
 
   const graded = config.mode !== 'sandbox' && config.expectedOutput !== undefined
 
@@ -106,8 +107,12 @@ function BlockProblemBody({ title, config, onComplete, onGraded }: BodyProps) {
         setPrintVarMissing(skippedPrintVar)
         setCompareMissing(fakedCompare)
         onGraded?.({ correct })
-        if (correct) onComplete?.()
+        if (correct) {
+          setSolved(true)
+          onComplete?.()
+        }
       } else {
+        setSolved(true)
         onComplete?.()
       }
     } catch (e) {
@@ -135,7 +140,10 @@ function BlockProblemBody({ title, config, onComplete, onGraded }: BodyProps) {
     )
 
   return (
-    <section className="problem problem-block" data-step-type="block_problem">
+    <section
+      className={`problem problem-block${solved ? ' is-energized' : ''}`}
+      data-step-type="block_problem"
+    >
       {title && <h2>{title}</h2>}
       <p className="block-prompt">{config.prompt}</p>
 
@@ -157,14 +165,17 @@ function BlockProblemBody({ title, config, onComplete, onGraded }: BodyProps) {
       )}
 
       <div className="block-actions">
-        <button type="button" onClick={run} disabled={running}>
+        <button type="button" className="btn-machine" onClick={run} disabled={running}>
           {running ? 'Running…' : 'Run'}
         </button>
         {config.initial.length > 0 && (
           <button
             type="button"
-            className="ghost"
-            onClick={() => dispatch({ kind: 'reset', program: hydrate(config.initial) })}
+            className="btn-ghost"
+            onClick={() => {
+              setSolved(false)
+              dispatch({ kind: 'reset', program: hydrate(config.initial) })
+            }}
           >
             Reset
           </button>

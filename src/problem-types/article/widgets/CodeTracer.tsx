@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react'
 import { codeTracerConfigSchema } from '../schema'
+import { WidgetFrame } from './WidgetFrame'
+import { useReducedMotion } from '../../../lib/ui/motion'
 
 interface Props {
   config: unknown
@@ -11,8 +13,10 @@ interface Props {
 // pre-computed in the lesson (no interpreter needed), so it stays exact.
 export function CodeTracer({ config, onComplete }: Props) {
   const { code, steps, caption } = codeTracerConfigSchema.parse(config)
+  const reduced = useReducedMotion()
   const [step, setStep] = useState(0)
   const done = step >= steps.length - 1
+  const status = done ? 'done' : step > 0 ? 'running' : 'idle'
 
   useEffect(() => {
     if (done) onComplete?.()
@@ -26,7 +30,15 @@ export function CodeTracer({ config, onComplete }: Props) {
     .filter((o): o is string => o !== undefined && o !== '')
 
   return (
-    <div className="widget widget-code-tracer" data-widget="code_tracer">
+    <WidgetFrame
+      kind="code_tracer"
+      icon="🔎"
+      title="Code Tracer"
+      status={status}
+      reduced={reduced}
+      className="widget-code-tracer"
+      caption={caption}
+    >
       <pre className="ct-code">
         {code.map((line, i) => (
           <div key={i} className={`ct-line${i === current.line ? ' is-current' : ''}`}>
@@ -60,10 +72,15 @@ export function CodeTracer({ config, onComplete }: Props) {
       </div>
 
       <div className="ct-controls">
-        <button type="button" onClick={() => setStep((s) => Math.min(s + 1, steps.length - 1))} disabled={done}>
+        <button
+          type="button"
+          className="btn-machine"
+          onClick={() => setStep((s) => Math.min(s + 1, steps.length - 1))}
+          disabled={done}
+        >
           Step
         </button>
-        <button type="button" className="ghost" onClick={() => setStep(0)} disabled={step === 0}>
+        <button type="button" className="btn-ghost" onClick={() => setStep(0)} disabled={step === 0}>
           Restart
         </button>
         <span className="ct-progress">
@@ -71,12 +88,11 @@ export function CodeTracer({ config, onComplete }: Props) {
         </span>
       </div>
 
-      {caption && <p className="widget-caption">{caption}</p>}
       {done && (
         <p role="status" className="feedback feedback-correct">
           You traced the whole program — following the values is how you read code.
         </p>
       )}
-    </div>
+    </WidgetFrame>
   )
 }

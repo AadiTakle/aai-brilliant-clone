@@ -1,9 +1,14 @@
+import { useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
-import { getStep } from '../content/loader'
+import { getStep, listLessons } from '../content/loader'
 import { ProblemRenderer } from '../problem-types/ProblemRenderer'
-import { ProgressBar } from '../components/ProgressBar'
+import { StepGauge } from '../components/StepGauge'
+import { SparkBurst } from '../components/SparkBurst'
+import { useCountUp } from '../components/useCountUp'
+import { getLessonMeta } from '../content/course'
+import { CURRENCY_GLYPH, CURRENCY_NAME } from '../components/Currency'
 import { useLessonProgress } from '../lib/progress/useLessonProgress'
-import { completedCount, getStepProgress, isLessonComplete } from '../lib/progress/model'
+import { getStepProgress, isLessonComplete, pointsEarned } from '../lib/progress/model'
 
 export function LessonPage() {
   const params = useParams()
@@ -13,6 +18,10 @@ export function LessonPage() {
   const location = getStep(lessonId, index)
 
   const { progress, recordStep, setCurrentStep } = useLessonProgress(location?.lesson ?? null)
+  const [burst, setBurst] = useState<{ amount: number; key: number }>({ amount: 0, key: 0 })
+
+  const earned = pointsEarned(progress)
+  const sparksDisplay = useCountUp(earned)
 
   if (!location) {
     return (
@@ -24,16 +33,28 @@ export function LessonPage() {
   }
 
   const { lesson, step, isFirst, isLast, total } = location
-  const done = completedCount(progress, lesson)
   const lessonComplete = isLessonComplete(progress, lesson)
-  // Learners can only advance once they have passed/finished the current step.
   const currentComplete = getStepProgress(progress, step.id).status === 'completed'
 
-  const handleGraded = (result: { correct: boolean }) => {
-    void recordStep(step, result.correct)
+  const meta = getLessonMeta(lesson.id, lesson.title)
+  const lessonNumber = listLessons().findIndex((l) => l.id === lesson.id) + 1
+  const stepStatuses = lesson.steps.map(
+    (s) => getStepProgress(progress, s.id).status === 'completed',
+  )
+
+  const fireReward = (pointsDelta: number) => {
+    if (pointsDelta > 0) {
+      setBurst((b) => ({ amount: pointsDelta, key: b.key + 1 }))
+    }
   }
-  const handleComplete = () => {
-    void recordStep(step, true)
+
+  const handleGraded = async (result: { correct: boolean }) => {
+    const out = await recordStep(step, result.correct)
+    fireReward(out.pointsDelta)
+  }
+  const handleComplete = async () => {
+    const out = await recordStep(step, true)
+    fireReward(out.pointsDelta)
   }
 
   const goTo = (i: number) => {
@@ -43,12 +64,27 @@ export function LessonPage() {
 
   return (
     <main className="lesson">
-      <header className="lesson-header">
-        <Link to="/?view=map" className="lesson-back-link">
-          ← Back to course
-        </Link>
-        <h1 className="lesson-title">{lesson.title}</h1>
-        <ProgressBar completed={done} total={total} />
+      <header className="lesson-hud">
+        <div className="lesson-hud-top">
+          <Link to="/?view=map" className="lesson-back-link">
+            ← Course
+          </Link>
+          <span className="lesson-hud-id">
+            <span className="lesson-hud-icon" aria-hidden="true">
+              {meta.icon}
+            </span>
+            <span className="lesson-hud-num">Lesson {lessonNumber}</span>
+          </span>
+          <span className="lesson-hud-sparks" title={`${CURRENCY_NAME} earned this lesson`}>
+            <span className="lesson-hud-sparks-icon" aria-hidden="true">
+              {CURRENCY_GLYPH}
+            </span>
+            <span className="lesson-hud-sparks-amount">{sparksDisplay}</span>
+            <SparkBurst amount={burst.amount} triggerKey={burst.key} size="lg" />
+          </span>
+        </div>
+        <h1 className="lesson-title">{meta.shortTitle}</h1>
+        <StepGauge steps={stepStatuses} currentIndex={index} />
       </header>
 
       <ProblemRenderer
@@ -60,7 +96,7 @@ export function LessonPage() {
       />
 
       <div className="lesson-nav">
-        <button type="button" disabled={isFirst} onClick={() => goTo(index - 1)}>
+        <button type="button" className="btn-ghost" disabled={isFirst} onClick={() => goTo(index - 1)}>
           Back
         </button>
         <span className="lesson-progress-text">
@@ -69,7 +105,7 @@ export function LessonPage() {
         {isLast ? (
           <Link
             to={`/lessons/${lessonId}/results`}
-            className="lesson-finish"
+            className="lesson-finish btn-machine"
             aria-disabled={!lessonComplete}
             onClick={(e) => {
               if (!lessonComplete) e.preventDefault()
@@ -80,11 +116,18 @@ export function LessonPage() {
         ) : (
           <button
             type="button"
+            className="btn-machine lesson-next"
             onClick={() => goTo(index + 1)}
             disabled={!currentComplete}
             title={currentComplete ? undefined : 'Finish this step to continue'}
           >
-            Next
+            {currentComplete ? (
+              'Next'
+            ) : (
+              <>
+                <span aria-hidden="true">🔒</span> Next
+              </>
+            )}
           </button>
         )}
       </div>

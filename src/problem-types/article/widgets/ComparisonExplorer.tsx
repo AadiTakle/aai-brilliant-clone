@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react'
 import { comparisonExplorerConfigSchema } from '../schema'
 import { NumberWheel } from './NumberWheel'
+import { WidgetFrame } from './WidgetFrame'
+import { useReducedMotion } from '../../../lib/ui/motion'
 
 interface Props {
   config: unknown
@@ -28,12 +30,6 @@ function clamp(n: number, lo: number, hi: number): number {
   return Math.max(lo, Math.min(hi, n))
 }
 
-// Does the user prefer reduced motion? Guarded so it works in non-browser tests.
-function prefersReducedMotion(): boolean {
-  if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return false
-  return window.matchMedia('(prefers-reduced-motion: reduce)').matches
-}
-
 // Pick the two numbers being compared with a pair of iPhone-alarm-style scroll
 // dials (the same NumberWheel mechanism the ModuloPicker uses): whichever number
 // is centred is the one in the comparison — no clicking required. The True/False
@@ -42,7 +38,7 @@ function prefersReducedMotion(): boolean {
 // prefers-reduced-motion.
 export function ComparisonExplorer({ config, onComplete }: Props) {
   const { left, right, max, caption } = comparisonExplorerConfigSchema.parse(config)
-  const [reduced] = useState(prefersReducedMotion)
+  const reduced = useReducedMotion()
   const [a, setA] = useState(() => clamp(left, 0, max))
   const [op, setOp] = useState<Op>('==')
   const [b, setB] = useState(() => clamp(right, 0, max))
@@ -82,11 +78,17 @@ export function ComparisonExplorer({ config, onComplete }: Props) {
     if (done) onComplete?.()
   }, [done, onComplete])
 
+  const status = done ? 'done' : seen.size > 1 ? 'running' : 'idle'
+
   return (
-    <div
-      className="widget widget-comparison-explorer"
-      data-widget="comparison_explorer"
-      data-motion={reduced ? 'reduced' : 'full'}
+    <WidgetFrame
+      kind="comparison_explorer"
+      icon="⚖️"
+      title="Comparison Explorer"
+      status={status}
+      reduced={reduced}
+      className="widget-comparison-explorer"
+      caption={caption}
     >
       <div className="ce-row ce-wheels">
         <NumberWheel max={max} selected={a} onSelect={changeA} reduced={reduced} ariaLabel="left number" />
@@ -107,13 +109,12 @@ export function ComparisonExplorer({ config, onComplete }: Props) {
         is <strong className={result ? 'is-true' : 'is-false'}>{result ? 'True' : 'False'}</strong>
       </div>
 
-      {caption && <p className="widget-caption">{caption}</p>}
       <p className="ce-hint muted">Scroll each dial to change the numbers. Try to make it say both True and False.</p>
       {done && (
         <p role="status" className="feedback feedback-correct">
           A comparison always answers True or False — a yes/no value the computer can act on.
         </p>
       )}
-    </div>
+    </WidgetFrame>
   )
 }

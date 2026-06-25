@@ -119,12 +119,19 @@ function ArticleBody({ title, panels, onComplete, initiallyComplete }: ArticleBo
   }, [articleComplete, onComplete])
 
   return (
-    <section className="problem problem-article article" data-step-type="article">
+    <section
+      className={`problem problem-article article${articleComplete ? ' is-energized' : ''}`}
+      data-step-type="article"
+    >
       {title && <h2>{title}</h2>}
 
       <ol className="article-panels">
         {panels.slice(0, revealed).map((panel, index) => (
-          <li className="article-panel" key={index} data-panel={index}>
+          <li
+            className={`article-panel${panel.activity && done.has(index) ? ' is-done' : ''}`}
+            key={index}
+            data-panel={index}
+          >
             {panel.text && (
               <div className="article-prose">
                 <Markdown>{panel.text}</Markdown>
@@ -141,7 +148,7 @@ function ArticleBody({ title, panels, onComplete, initiallyComplete }: ArticleBo
         <div className="article-advance">
           <button
             type="button"
-            className="article-continue"
+            className="article-continue btn-machine"
             disabled={!currentComplete}
             onClick={() => setRevealed((r) => Math.min(r + 1, panels.length))}
           >

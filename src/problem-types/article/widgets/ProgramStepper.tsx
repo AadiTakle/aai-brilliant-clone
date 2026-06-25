@@ -5,17 +5,12 @@ import {
   type ProgramStepperDecisionConfig,
   type ProgramStepperLoopConfig,
 } from '../schema'
+import { WidgetFrame } from './WidgetFrame'
+import { useReducedMotion } from '../../../lib/ui/motion'
 
 interface Props {
   config: unknown
   onComplete?: () => void
-}
-
-// Does the user prefer reduced motion? When true we skip the line-highlight
-// transition so nothing slides/fades. Guarded so it works in non-browser tests.
-function prefersReducedMotion(): boolean {
-  if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return false
-  return window.matchMedia('(prefers-reduced-motion: reduce)').matches
 }
 
 interface ExecStep {
@@ -164,7 +159,7 @@ function buildLoopExec(cfg: ProgramStepperLoopConfig): ExecStep[] {
 // highlights the current line and explains what it does.
 export function ProgramStepper({ config, onComplete }: Props) {
   const cfg: ProgramStepperConfig = useMemo(() => programStepperConfigSchema.parse(config), [config])
-  const [reduced] = useState(prefersReducedMotion)
+  const reduced = useReducedMotion()
   const isLoop = cfg.mode === 'loop'
   const isTrace = cfg.mode === 'trace'
   const isDecision = cfg.mode === 'decision'
@@ -214,12 +209,17 @@ export function ProgramStepper({ config, onComplete }: Props) {
   const printed = shown.map((s) => s.output).filter((o): o is string => o !== undefined)
   const output = printed.length ? printed.join('\n') : undefined
 
+  const status = atEnd ? 'done' : started && stepIndex > 0 ? 'running' : 'idle'
+
   return (
-    <div
-      className="widget widget-program-stepper"
-      data-widget="program_stepper"
-      data-mode={cfg.mode}
-      data-motion={reduced ? 'reduced' : 'full'}
+    <WidgetFrame
+      kind="program_stepper"
+      icon="🛠️"
+      title="Program Stepper"
+      status={status}
+      reduced={reduced}
+      className="widget-program-stepper"
+      caption={cfg.caption}
     >
       <div className="ps-stage">
         <pre className="ps-code" aria-label="program">
@@ -282,6 +282,7 @@ export function ProgramStepper({ config, onComplete }: Props) {
       <div className="ps-controls">
         <button
           type="button"
+          className="btn-machine"
           onClick={() => setStepIndex((s) => Math.min(s + 1, exec.length - 1))}
           disabled={!valid || atEnd}
         >
@@ -289,7 +290,7 @@ export function ProgramStepper({ config, onComplete }: Props) {
         </button>
         <button
           type="button"
-          className="ghost"
+          className="btn-ghost"
           onClick={() => setStepIndex(0)}
           disabled={!valid || stepIndex === 0}
         >
@@ -302,7 +303,6 @@ export function ProgramStepper({ config, onComplete }: Props) {
         )}
       </div>
 
-      {cfg.caption && <p className="widget-caption">{cfg.caption}</p>}
       {atEnd && (
         <p role="status" className="feedback feedback-correct">
           {isLoop
@@ -312,6 +312,6 @@ export function ProgramStepper({ config, onComplete }: Props) {
               : 'You stepped the whole program. Try a different number and step again to see another branch win.'}
         </p>
       )}
-    </div>
+    </WidgetFrame>
   )
 }

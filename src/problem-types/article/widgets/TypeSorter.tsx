@@ -1,14 +1,11 @@
 import { useEffect, useState } from 'react'
 import { typeSorterConfigSchema } from '../schema'
+import { WidgetFrame } from './WidgetFrame'
+import { useReducedMotion } from '../../../lib/ui/motion'
 
 interface Props {
   config: unknown
   onComplete?: () => void
-}
-
-function prefersReducedMotion(): boolean {
-  if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return false
-  return window.matchMedia('(prefers-reduced-motion: reduce)').matches
 }
 
 // Sort each value into "number" or "text". Built like the word game in *Keep
@@ -19,7 +16,7 @@ function prefersReducedMotion(): boolean {
 // in quotes). Respects prefers-reduced-motion (instant swap, no slide).
 export function TypeSorter({ config, onComplete }: Props) {
   const { items, caption } = typeSorterConfigSchema.parse(config)
-  const [reduced] = useState(prefersReducedMotion)
+  const reduced = useReducedMotion()
   const [index, setIndex] = useState(0)
   // A word that has just been answered and is sliding away (decorative only).
   const [leaving, setLeaving] = useState<{ label: string; key: number } | null>(null)
@@ -44,11 +41,17 @@ export function TypeSorter({ config, onComplete }: Props) {
     }
   }
 
+  const status = done ? 'done' : index > 0 ? 'running' : 'idle'
+
   return (
-    <div
-      className={`widget widget-type-sorter${wrong ? ' is-wrong' : ''}`}
-      data-widget="type_sorter"
-      data-motion={reduced ? 'reduced' : 'full'}
+    <WidgetFrame
+      kind="type_sorter"
+      icon="🗂️"
+      title="Type Sorter"
+      status={status}
+      reduced={reduced}
+      className={`widget-type-sorter${wrong ? ' is-wrong' : ''}`}
+      caption={caption}
     >
       <div className="ts-stage">
         {leaving && (
@@ -74,10 +77,10 @@ export function TypeSorter({ config, onComplete }: Props) {
 
       {!done && (
         <div className="ts-buttons">
-          <button type="button" onClick={() => choose('number')}>
+          <button type="button" className="btn-machine" onClick={() => choose('number')}>
             number
           </button>
-          <button type="button" onClick={() => choose('text')}>
+          <button type="button" className="btn-machine" onClick={() => choose('text')}>
             text
           </button>
         </div>
@@ -93,12 +96,11 @@ export function TypeSorter({ config, onComplete }: Props) {
         {Math.min(index, items.length)} / {items.length}
       </p>
 
-      {caption && <p className="widget-caption">{caption}</p>}
       {done && (
         <p role="status" className="feedback feedback-correct">
           Nice sorting! Numbers do math; text in quotes is a string.
         </p>
       )}
-    </div>
+    </WidgetFrame>
   )
 }

@@ -1,17 +1,12 @@
 import { useEffect, useMemo, useState } from 'react'
 import { rangeMachineConfigSchema } from '../schema'
 import { NumberWheel } from './NumberWheel'
+import { WidgetFrame } from './WidgetFrame'
+import { useReducedMotion } from '../../../lib/ui/motion'
 
 interface Props {
   config: unknown
   onComplete?: () => void
-}
-
-// Does the user prefer reduced motion? When true we skip the collapse pulse and
-// the number "pop" so nothing animates. Guarded for non-browser test envs.
-function prefersReducedMotion(): boolean {
-  if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return false
-  return window.matchMedia('(prefers-reduced-motion: reduce)').matches
 }
 
 function clamp(n: number, lo: number, hi: number): number {
@@ -27,7 +22,7 @@ function clamp(n: number, lo: number, hi: number): number {
 // reinforcing that range stops just BEFORE n. Built on the shared NumberWheel.
 export function RangeMachine({ config, onComplete }: Props) {
   const cfg = useMemo(() => rangeMachineConfigSchema.parse(config), [config])
-  const [reduced] = useState(prefersReducedMotion)
+  const reduced = useReducedMotion()
 
   const [n, setN] = useState(() => clamp(cfg.initial, 0, cfg.max))
   // Phase walks the collapse one move at a time. The expand phase is the last.
@@ -95,12 +90,18 @@ export function RangeMachine({ config, onComplete }: Props) {
     }
   }, [cfg.plusOne, cfg.start, n, stop, phase])
 
+  const status = atExpand ? 'done' : phase > 0 ? 'running' : 'idle'
+
   return (
-    <div
-      className="widget widget-range-machine"
-      data-widget="range_machine"
-      data-motion={reduced ? 'reduced' : 'full'}
-      data-phase={phase}
+    <WidgetFrame
+      kind="range_machine"
+      icon="📏"
+      title="Range Machine"
+      status={status}
+      reduced={reduced}
+      className="widget-range-machine"
+      caption={cfg.caption}
+      dataAttrs={{ 'data-phase': String(phase) }}
     >
       <div className="rm-stage">
         <div className="rm-wheel-area">
@@ -142,18 +143,21 @@ export function RangeMachine({ config, onComplete }: Props) {
       </p>
 
       <div className="rm-controls">
-        <button type="button" onClick={() => setPhase((p) => Math.min(p + 1, expandPhase))} disabled={atExpand}>
+        <button
+          type="button"
+          className="btn-machine"
+          onClick={() => setPhase((p) => Math.min(p + 1, expandPhase))}
+          disabled={atExpand}
+        >
           Step
         </button>
-        <button type="button" className="ghost" onClick={() => setPhase(0)} disabled={phase === 0}>
+        <button type="button" className="btn-ghost" onClick={() => setPhase(0)} disabled={phase === 0}>
           Restart
         </button>
         <span className="rm-progress">
           step {Math.min(phase + 1, expandPhase + 1)} / {expandPhase + 1}
         </span>
       </div>
-
-      {cfg.caption && <p className="widget-caption">{cfg.caption}</p>}
-    </div>
+    </WidgetFrame>
   )
 }

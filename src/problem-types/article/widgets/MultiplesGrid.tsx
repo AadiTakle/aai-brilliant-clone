@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react'
 import { multiplesGridConfigSchema } from '../schema'
+import { WidgetFrame } from './WidgetFrame'
+import { useReducedMotion } from '../../../lib/ui/motion'
 
 interface Props {
   config: unknown
@@ -11,6 +13,7 @@ interface Props {
 // connects to `n % factor == 0`.
 export function MultiplesGrid({ config, onComplete }: Props) {
   const { upTo, factor, caption } = multiplesGridConfigSchema.parse(config)
+  const reduced = useReducedMotion()
   const [picked, setPicked] = useState<Set<number>>(new Set())
 
   const numbers = Array.from({ length: upTo }, (_, i) => i + 1)
@@ -31,8 +34,18 @@ export function MultiplesGrid({ config, onComplete }: Props) {
     })
   }
 
+  const status = allFound && picked.size > 0 ? 'done' : picked.size > 0 ? 'running' : 'idle'
+
   return (
-    <div className="widget widget-multiples-grid" data-widget="multiples_grid">
+    <WidgetFrame
+      kind="multiples_grid"
+      icon="🔢"
+      title="Multiples Grid"
+      status={status}
+      reduced={reduced}
+      className="widget-multiples-grid"
+      caption={caption}
+    >
       <p className="mg-instruction">Tap every multiple of {factor}.</p>
       <div className="mg-grid" role="group" aria-label={`numbers 1 to ${upTo}`}>
         {numbers.map((n) => {
@@ -52,12 +65,11 @@ export function MultiplesGrid({ config, onComplete }: Props) {
         })}
       </div>
 
-      {caption && <p className="widget-caption">{caption}</p>}
       {allFound && picked.size > 0 && (
         <p role="status" className="feedback feedback-correct">
           Those are the multiples of {factor} — each one has remainder 0 when divided by {factor}.
         </p>
       )}
-    </div>
+    </WidgetFrame>
   )
 }

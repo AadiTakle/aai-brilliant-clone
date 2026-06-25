@@ -585,21 +585,64 @@ button.ghost:hover:not(:disabled) {
 }
 
 .feedback {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
   border-radius: var(--radius-sm);
   padding: var(--space-3) var(--space-4);
   font-size: 0.9rem;
-  font-weight: 600;
+  font-weight: 700;
   margin: var(--space-3) 0 0;
 }
 
+/* Correct = "circuit powered": green, with a leading check and a pop-in. */
 .feedback-correct {
   background: var(--color-success-soft);
   color: var(--color-success);
+  border: 1px solid color-mix(in srgb, var(--color-success) 35%, transparent);
+  animation: feedback-pop 0.34s ease both;
+}
+
+.feedback-correct::before {
+  content: '\2713';
+  display: grid;
+  place-items: center;
+  width: 1.3rem;
+  height: 1.3rem;
+  border-radius: var(--radius-pill);
+  background: var(--color-success);
+  color: var(--color-on-primary);
+  font-size: 0.85rem;
+  flex: none;
 }
 
 .feedback-incorrect {
   background: var(--color-danger-soft);
   color: var(--color-danger);
+  border: 1px solid color-mix(in srgb, var(--color-danger) 30%, transparent);
+  animation: feedback-shake 0.4s ease both;
+}
+
+/* An inline "+N ✦" chip the step/widget can drop into a correct banner. */
+.feedback-spark {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  padding: 0.1rem 0.5rem;
+  border-radius: var(--radius-pill);
+  background: color-mix(in srgb, var(--spark) 22%, transparent);
+  color: var(--color-currency);
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: 0.8rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .feedback-correct,
+  .feedback-incorrect {
+    animation: none;
+  }
 }
 
 /* ---------- Block engine (Phase 4) ---------- */
@@ -2195,10 +2238,126 @@ button.ghost:hover:not(:disabled) {
 
 .lesson-title {
   margin: 0;
-  font-size: 1.4rem;
+  font-size: 1.5rem;
+}
+
+/* ---------- Lesson HUD (control panel) ---------- */
+.lesson-hud {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin-bottom: var(--space-5);
+  padding: var(--space-4) var(--space-5);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+}
+
+.lesson-hud-top {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.lesson-hud-id {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-left: var(--space-2);
+}
+
+.lesson-hud-icon {
+  display: grid;
+  place-items: center;
+  width: 2rem;
+  height: 2rem;
+  border-radius: var(--radius-md);
+  background: var(--color-primary-soft);
+  font-size: 1.15rem;
+}
+
+.lesson-hud-num {
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-muted);
+}
+
+.lesson-hud-sparks {
+  position: relative;
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.3rem 0.75rem;
+  border-radius: var(--radius-pill);
+  background: color-mix(in srgb, var(--spark) 16%, var(--color-surface-2));
+  color: var(--color-currency);
+  font-family: var(--font-mono);
+  font-weight: 700;
+}
+
+.lesson-hud-sparks-icon {
+  font-size: 1rem;
+}
+
+.lesson-hud-sparks-amount {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Segmented step gauge */
+.step-gauge {
+  display: flex;
+  gap: 4px;
+  width: 100%;
+}
+
+.step-seg {
+  flex: 1 1 0;
+  height: 8px;
+  border-radius: var(--radius-pill);
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-border);
+  transition: background 0.3s ease, border-color 0.3s ease;
+}
+
+.step-seg.is-done {
+  background: var(--color-success);
+  border-color: var(--color-success);
+}
+
+.step-seg.is-current {
+  border-color: var(--color-primary);
+  background: var(--color-primary-soft);
+  animation: gauge-pulse 1.4s ease-in-out infinite;
+}
+
+.step-seg.is-current.is-done {
+  background: var(--color-success);
+  border-color: var(--color-primary);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .step-seg.is-current {
+    animation: none;
+  }
+}
+
+/* Machine-styled lesson nav buttons */
+.lesson-next:not(:disabled) {
+  background: var(--color-primary);
+}
+
+.lesson-next:disabled {
+  background: var(--color-surface-2);
+  color: var(--color-muted);
 }
 
 .results {
+  position: relative;
   max-width: 560px;
   margin: 0 auto;
   text-align: center;
@@ -2211,6 +2370,76 @@ button.ghost:hover:not(:disabled) {
   letter-spacing: 0.05em;
   font-size: 0.8rem;
   margin-bottom: var(--space-2);
+}
+
+.results.is-complete .results-eyebrow {
+  color: var(--color-success);
+}
+
+/* Results hero: lesson machine + the big spark payoff */
+.results-hero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-1);
+  margin-bottom: var(--space-5);
+}
+
+.results-hero-icon {
+  display: grid;
+  place-items: center;
+  width: 4rem;
+  height: 4rem;
+  border-radius: var(--radius-lg);
+  background: var(--color-primary-soft);
+  font-size: 2.2rem;
+  margin-bottom: var(--space-2);
+}
+
+.results-spark-hero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0;
+  margin: 0 0 var(--space-6);
+}
+
+.results-spark-glyph {
+  font-size: 1.8rem;
+  color: var(--color-currency);
+  line-height: 1;
+}
+
+.results-spark-count {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: clamp(3rem, 12vw, 4.5rem);
+  line-height: 1;
+  color: var(--color-currency);
+  font-variant-numeric: tabular-nums;
+}
+
+.results-spark-label {
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  letter-spacing: 0.05em;
+  color: var(--color-muted);
+}
+
+/* Bounded spark shower on completion */
+.spark-shower {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.spark-shower-bit {
+  position: absolute;
+  top: 0;
+  color: var(--spark);
+  font-size: 1rem;
 }
 
 .results-stats {
@@ -2409,4 +2638,250 @@ button.ghost:hover:not(:disabled) {
     min-width: 0;
     padding: var(--space-4) var(--space-3);
   }
+}
+
+/* ============================================================
+   Gamification system (shared)
+   The "machine module" chassis, the spark burst, the circuit
+   "energized" success state, and machine-styled controls. These
+   are reused by every step type and every article widget so the
+   lessons feel like one cohesive control room.
+   ============================================================ */
+
+@keyframes feedback-pop {
+  0% {
+    opacity: 0;
+    transform: translateY(4px) scale(0.98);
+  }
+  60% {
+    transform: translateY(0) scale(1.01);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes feedback-shake {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  20% {
+    transform: translateX(-5px);
+  }
+  40% {
+    transform: translateX(4px);
+  }
+  60% {
+    transform: translateX(-3px);
+  }
+  80% {
+    transform: translateX(2px);
+  }
+}
+
+/* A one-shot green glow ripple when a module powers on. */
+@keyframes circuit-glow {
+  0% {
+    box-shadow: 0 0 0 0 rgba(40, 199, 111, 0);
+  }
+  35% {
+    box-shadow: var(--glow-circuit);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(40, 199, 111, 0);
+  }
+}
+
+@keyframes gauge-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.45;
+  }
+}
+
+/* ---- Spark burst (the +N ✦ flourish) ---- */
+.spark-burst {
+  position: absolute;
+  left: 50%;
+  top: 0;
+  transform: translateX(-50%);
+  pointer-events: none;
+  z-index: 5;
+}
+
+.spark-burst-amount {
+  position: absolute;
+  left: 50%;
+  top: 0;
+  transform: translateX(-50%);
+  white-space: nowrap;
+  font-family: var(--font-mono);
+  font-weight: 700;
+  color: var(--color-currency);
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.15);
+}
+
+.spark-burst-sm .spark-burst-amount {
+  font-size: 1rem;
+}
+
+.spark-burst-lg .spark-burst-amount {
+  font-size: 1.6rem;
+}
+
+.spark-burst-particles {
+  position: absolute;
+  left: 50%;
+  top: 0.4rem;
+}
+
+.spark-burst-particle {
+  position: absolute;
+  left: 0;
+  top: 0;
+  color: var(--spark);
+  font-size: 0.75rem;
+}
+
+/* ---- Energized ("powered") module state ---- */
+.is-energized {
+  border-color: color-mix(in srgb, var(--color-success) 45%, var(--color-border)) !important;
+  animation: circuit-glow 1.1s ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .is-energized {
+    animation: none;
+  }
+}
+
+/* ---- Machine-styled controls (shared by widgets + steps) ---- */
+.btn-machine {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  font-family: var(--font-display);
+  font-weight: 600;
+  border-radius: var(--radius-pill);
+  box-shadow: var(--shadow-sm);
+}
+
+.btn-ghost {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.6rem 1.25rem;
+  background: transparent;
+  color: var(--color-primary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-pill);
+  font-weight: 600;
+}
+
+.btn-ghost:hover {
+  text-decoration: none;
+}
+
+.btn-ghost:hover:not(:disabled) {
+  background: var(--color-primary-soft);
+}
+
+/* ---- Widget "machine module" chassis ---- */
+.widget-frame {
+  position: relative;
+  transition: box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+.widget-frame-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0 0 var(--space-4);
+  padding-bottom: var(--space-3);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.widget-frame-icon {
+  display: grid;
+  place-items: center;
+  width: 2rem;
+  height: 2rem;
+  border-radius: var(--radius-md);
+  background: var(--color-primary-soft);
+  font-size: 1.1rem;
+  flex: none;
+}
+
+.widget-frame-title {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 1rem;
+  color: var(--color-text);
+}
+
+.widget-frame-badge {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.15rem 0.6rem;
+  border-radius: var(--radius-pill);
+  background: var(--color-surface-2);
+  color: var(--color-muted);
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.widget-frame[data-status='running'] .widget-frame-badge {
+  background: var(--color-primary-soft);
+  color: var(--color-primary);
+  animation: gauge-pulse 1.1s ease-in-out infinite;
+}
+
+.widget-frame[data-status='done'] .widget-frame-badge {
+  background: var(--color-success-soft);
+  color: var(--color-success);
+  animation: none;
+}
+
+.widget-frame-badge-check {
+  font-size: 0.85rem;
+}
+
+/* When a widget reports done, energize the whole module once. */
+.widget-frame[data-status='done'] {
+  border-color: color-mix(in srgb, var(--color-success) 40%, var(--color-border));
+}
+
+.widget-frame[data-status='done'][data-motion='full'] {
+  animation: circuit-glow 1.1s ease-out;
+}
+
+/* ---- Step-type success accents ---- */
+.article-panel.is-done {
+  border-left: 3px solid var(--color-success);
+  padding-left: var(--space-4);
+  margin-left: calc(-1 * var(--space-2));
+}
+
+.parsons-line-solution.is-correct {
+  border-color: var(--color-success);
+  background: var(--color-success-soft);
+}
+
+.test-result.is-pass {
+  background: color-mix(in srgb, var(--color-success) 8%, var(--color-surface));
+}
+
+.problem.is-energized {
+  border-color: color-mix(in srgb, var(--color-success) 45%, var(--color-border));
 }

@@ -1,16 +1,11 @@
 import { useEffect, useRef, useState } from 'react'
 import { functionMachineConfigSchema } from '../schema'
+import { WidgetFrame } from './WidgetFrame'
+import { useReducedMotion } from '../../../lib/ui/motion'
 
 interface Props {
   config: unknown
   onComplete?: () => void
-}
-
-// Does the user prefer reduced motion? When true we skip the slide animation and
-// reveal the output instantly. Guarded so it works in non-browser test envs.
-function prefersReducedMotion(): boolean {
-  if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return false
-  return window.matchMedia('(prefers-reduced-motion: reduce)').matches
 }
 
 // Pace of the echo typewriter.
@@ -32,7 +27,7 @@ export function FunctionMachine({ config, onComplete }: Props) {
   const { fnName, cases, caption, editable, echoInput } = functionMachineConfigSchema.parse(config)
   const [index, setIndex] = useState(0)
   const [ran, setRan] = useState(false)
-  const [reduced] = useState(prefersReducedMotion)
+  const reduced = useReducedMotion()
   const [inputText, setInputText] = useState(cases[0]?.input ?? '')
   const [typed, setTyped] = useState('')
   // Whether the console is mid-print; drives the blinking caret (hidden once done).
@@ -124,12 +119,18 @@ export function FunctionMachine({ config, onComplete }: Props) {
     setSyntaxText(null)
   }
 
+  const status = done ? 'done' : ran ? 'running' : 'idle'
+
   return (
-    <div
-      className="widget widget-function-machine"
-      data-widget="function_machine"
-      data-motion={reduced ? 'reduced' : 'full'}
-      data-running={ran ? 'true' : 'false'}
+    <WidgetFrame
+      kind="function_machine"
+      icon="⚙️"
+      title="Function Machine"
+      status={status}
+      reduced={reduced}
+      className="widget-function-machine"
+      caption={caption}
+      dataAttrs={{ 'data-running': ran ? 'true' : 'false' }}
     >
       <div className="fm-line">
         <div className="fm-input" aria-label="input">
@@ -178,15 +179,15 @@ export function FunctionMachine({ config, onComplete }: Props) {
 
       <div className="fm-controls">
         {editable ? (
-          <button type="button" onClick={run}>
+          <button type="button" className="btn-machine" onClick={run}>
             Run {fnName}
           </button>
         ) : !ran ? (
-          <button type="button" onClick={run}>
+          <button type="button" className="btn-machine" onClick={run}>
             Run {fnName}
           </button>
         ) : index < cases.length - 1 ? (
-          <button type="button" onClick={next}>
+          <button type="button" className="btn-machine" onClick={next}>
             Try another input
           </button>
         ) : null}
@@ -197,12 +198,11 @@ export function FunctionMachine({ config, onComplete }: Props) {
         )}
       </div>
 
-      {caption && <p className="widget-caption">{caption}</p>}
       {done && (
         <p role="status" className="feedback feedback-correct">
           A function takes an input, does its job, and gives back an output.
         </p>
       )}
-    </div>
+    </WidgetFrame>
   )
 }

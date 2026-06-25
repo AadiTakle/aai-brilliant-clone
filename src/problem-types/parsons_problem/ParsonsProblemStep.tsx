@@ -109,7 +109,10 @@ function ParsonsBody({ title, config, onComplete, onGraded }: BodyProps) {
   }
 
   return (
-    <section className="problem problem-parsons" data-step-type="parsons_problem">
+    <section
+      className={`problem problem-parsons${solved ? ' is-energized' : ''}`}
+      data-step-type="parsons_problem"
+    >
       {title && <h2>{title}</h2>}
       <p className="block-prompt">{config.prompt}</p>
 
@@ -138,7 +141,11 @@ function ParsonsBody({ title, config, onComplete, onGraded }: BodyProps) {
           {solution.length === 0 && <p className="muted">Add lines from the left, then order and indent them.</p>}
           <ol className="parsons-list">
             {solution.map((line, i) => (
-              <li key={line.id} className="parsons-line parsons-line-solution" style={{ marginLeft: `${line.indent * 1.5}rem` }}>
+              <li
+                key={line.id}
+                className={`parsons-line parsons-line-solution${solved ? ' is-correct' : ''}`}
+                style={{ marginLeft: `${line.indent * 1.5}rem` }}
+              >
                 <code>{line.code}</code>
                 <span className="parsons-controls">
                   <button type="button" aria-label="Outdent" onClick={() => reindent(i, -1)} disabled={solved || line.indent === 0}>
@@ -164,7 +171,12 @@ function ParsonsBody({ title, config, onComplete, onGraded }: BodyProps) {
       </div>
 
       <div className="block-actions">
-        <button type="button" onClick={check} disabled={solution.length === 0 || solved}>
+        <button
+          type="button"
+          className="btn-machine"
+          onClick={check}
+          disabled={solution.length === 0 || solved}
+        >
           Check
         </button>
       </div>

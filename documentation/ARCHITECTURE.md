@@ -119,8 +119,18 @@ parsed by each widget component.
 
 Available widgets ([article/widgets/](../src/problem-types/article/widgets/)):
 `repeated_addition`, `loop_visualizer`, `function_machine`, `variable_box`,
-`type_sorter`, `remainder_machine`, `multiples_grid`, `comparison_explorer`,
-`branch_visualizer`, `code_tracer`.
+`value_box`, `type_sorter`, `remainder_machine`, `modulo_picker`,
+`multiples_grid`, `comparison_explorer`, `branch_visualizer`, `code_tracer`,
+`program_stepper`, `range_machine`, `decision_machine`.
+
+Every widget (and `Checkpoint`) renders inside the shared **`WidgetFrame`**
+([WidgetFrame.tsx](../src/problem-types/article/widgets/WidgetFrame.tsx)) "machine
+module" chassis: an icon chip + machine name, the bespoke interior, and a
+`status: 'idle' | 'running' | 'done'` prop that drives a `READY`/`Running`/`✓
+Powered` badge and the green **circuit "energize"** glow on completion. This
+shared chassis is what keeps the bespoke widget interiors cohesive when several
+are combined in one article. Reduced-motion is read once via the shared
+[lib/ui/motion.ts](../src/lib/ui/motion.ts) `useReducedMotion()` helper.
 
 ## 6. Block engine ([src/lib/blocks/](../src/lib/blocks/))
 
@@ -228,6 +238,26 @@ uid. `courses` are world-readable, never client-writable.
   clickable `StreakBadge` (orange flame when active) opening a `StreakModal` with
   the week's activity. Design tokens live in [src/index.css](../src/index.css);
   component styles in [src/App.css](../src/App.css).
+
+### The Spark Burst + Circuit Energize signature
+The lesson experience is built around one repeated gamification flourish: **every
+correct answer / finished widget energizes its module (green `circuit-glow` +
+`✓ Powered`) and emits a `+N ✦` burst, while the lesson HUD's Sparks readout ticks
+up.** The pieces:
+- [`SparkBurst`](../src/components/SparkBurst.tsx): the Motion-based `+N ✦` pop
+  with gold particles (static fade under reduced motion). To support it,
+  `recordStep` ([useLessonProgress.ts](../src/lib/progress/useLessonProgress.ts))
+  returns `{ pointsDelta, justCompleted, lessonComplete }`.
+- [`LessonPage`](../src/pages/LessonPage.tsx): a **control-panel HUD** (lesson icon
+  + number from [content/course.ts](../src/content/course.ts), a segmented
+  [`StepGauge`](../src/components/StepGauge.tsx), and a live "Sparks this lesson"
+  count-up that fires a `SparkBurst` on each earn), plus machine-styled nav.
+- [`ResultsPage`](../src/pages/ResultsPage.tsx): a "machine complete" payoff with a
+  big animated Sparks count-up, a bounded `spark-shower`, the streak badge, and a
+  strong Next-lesson / Back-to-course CTA.
+- Shared CSS in [src/App.css](../src/App.css): `.is-energized`, the upgraded
+  `.feedback-correct/.feedback-incorrect` system, `.btn-machine`/`.btn-ghost`, and
+  the `WidgetFrame` chassis — all gated by `prefers-reduced-motion`.
 
 ## 11. The curriculum & the coverage contract
 

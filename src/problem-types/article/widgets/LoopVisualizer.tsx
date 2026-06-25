@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react'
 import { loopVisualizerConfigSchema } from '../schema'
+import { WidgetFrame } from './WidgetFrame'
+import { useReducedMotion } from '../../../lib/ui/motion'
 
 interface LoopVisualizerProps {
   config: unknown
@@ -10,8 +12,10 @@ interface LoopVisualizerProps {
 // counter and the output produced on each pass.
 export function LoopVisualizer({ config, onComplete }: LoopVisualizerProps) {
   const { iterations, action, caption } = loopVisualizerConfigSchema.parse(config)
+  const reduced = useReducedMotion()
   const [current, setCurrent] = useState(0)
   const done = current >= iterations
+  const status = done ? 'done' : current > 0 ? 'running' : 'idle'
 
   useEffect(() => {
     if (done) onComplete?.()
@@ -20,16 +24,22 @@ export function LoopVisualizer({ config, onComplete }: LoopVisualizerProps) {
   const outputs = Array.from({ length: current }, (_, i) => ({ i, text: action }))
 
   return (
-    <div className="widget widget-loop-visualizer" data-widget="loop_visualizer">
+    <WidgetFrame
+      kind="loop_visualizer"
+      icon="🔁"
+      title="Loop Machine"
+      status={status}
+      reduced={reduced}
+      className="widget-loop-visualizer"
+      caption={caption}
+    >
       <pre className="lv-code">
-        <code>
-          {`for i in range(${iterations}):\n    ${action}`}
-        </code>
+        <code>{`for i in range(${iterations}):\n    ${action}`}</code>
       </pre>
 
       <div className="lv-state">
         <span className="lv-counter" aria-live="polite">
-          i = {Math.min(current, iterations - 1) >= 0 && current > 0 ? current - 1 : 0}
+          i = {current > 0 ? current - 1 : 0}
         </span>
         <span className="lv-progress">
           iteration {current} / {iterations}
@@ -45,6 +55,7 @@ export function LoopVisualizer({ config, onComplete }: LoopVisualizerProps) {
       <div className="lv-controls">
         <button
           type="button"
+          className="btn-machine"
           onClick={() => setCurrent((c) => Math.min(c + 1, iterations))}
           disabled={done}
         >
@@ -52,7 +63,7 @@ export function LoopVisualizer({ config, onComplete }: LoopVisualizerProps) {
         </button>
         <button
           type="button"
-          className="ghost"
+          className="btn-ghost"
           onClick={() => setCurrent(0)}
           disabled={current === 0}
         >
@@ -60,12 +71,11 @@ export function LoopVisualizer({ config, onComplete }: LoopVisualizerProps) {
         </button>
       </div>
 
-      {caption && <p className="widget-caption">{caption}</p>}
       {done && (
         <p role="status" className="feedback feedback-correct">
           The loop body ran {iterations} times — once for each value of <code>i</code>.
         </p>
       )}
-    </div>
+    </WidgetFrame>
   )
 }

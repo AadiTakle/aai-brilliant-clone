@@ -1,16 +1,11 @@
 import { useEffect, useState } from 'react'
 import { repeatedAdditionConfigSchema } from '../schema'
+import { WidgetFrame } from './WidgetFrame'
+import { useReducedMotion } from '../../../lib/ui/motion'
 
 interface RepeatedAdditionProps {
   config: unknown
   onComplete?: () => void
-}
-
-// Does the user prefer reduced motion? When true we skip the slide-in of each
-// dropped term. Guarded so it works in non-browser test envs.
-function prefersReducedMotion(): boolean {
-  if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return false
-  return window.matchMedia('(prefers-reduced-motion: reduce)').matches
 }
 
 // Tedium demo: the learner DRAGS "+N" blocks into the equation, one at a time,
@@ -19,7 +14,7 @@ function prefersReducedMotion(): boolean {
 // want loops. A click is an accessible fallback for keyboard / no-drag users.
 export function RepeatedAddition({ config, onComplete }: RepeatedAdditionProps) {
   const { value, target, caption } = repeatedAdditionConfigSchema.parse(config)
-  const [reduced] = useState(prefersReducedMotion)
+  const reduced = useReducedMotion()
   const [count, setCount] = useState(0)
   // True only while a "+N" chip is mid-drag (so a drop works where dataTransfer
   // is unavailable, e.g. jsdom).
@@ -40,11 +35,17 @@ export function RepeatedAddition({ config, onComplete }: RepeatedAdditionProps) 
 
   const terms = Array.from({ length: count }, () => value)
 
+  const status = done ? 'done' : count > 0 ? 'running' : 'idle'
+
   return (
-    <div
-      className="widget widget-repeated-addition"
-      data-widget="repeated_addition"
-      data-motion={reduced ? 'reduced' : 'full'}
+    <WidgetFrame
+      kind="repeated_addition"
+      icon="➕"
+      title="Adding Machine"
+      status={status}
+      reduced={reduced}
+      className="widget-repeated-addition"
+      caption={caption}
     >
       <p className="ra-goal muted">
         Drag <strong>+{value}</strong> blocks into the equation until the total reaches{' '}
@@ -91,7 +92,7 @@ export function RepeatedAddition({ config, onComplete }: RepeatedAdditionProps) 
       </div>
 
       <div className="ra-controls">
-        <button type="button" className="ghost" onClick={() => setCount(0)} disabled={count === 0}>
+        <button type="button" className="btn-ghost" onClick={() => setCount(0)} disabled={count === 0}>
           Reset
         </button>
         <span className="ra-count">
@@ -99,13 +100,12 @@ export function RepeatedAddition({ config, onComplete }: RepeatedAdditionProps) 
         </span>
       </div>
 
-      {caption && <p className="widget-caption">{caption}</p>}
       {done && (
         <p role="status" className="feedback feedback-correct">
           Phew — you added {value} the same way {target} times to reach {goal}. Doing the exact same
           thing over and over is tedious. There has to be a faster way…
         </p>
       )}
-    </div>
+    </WidgetFrame>
   )
 }
