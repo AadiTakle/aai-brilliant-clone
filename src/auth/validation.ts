@@ -89,6 +89,12 @@ export function mapAuthError(code: string): string {
       return 'Too many attempts. Please wait a moment and try again.'
     case 'auth/network-request-failed':
       return 'Network problem. Check your connection and try again.'
+    case 'auth/account-exists-with-different-credential':
+      return 'An account already exists with this email. Try a different way to sign in.'
+    case 'auth/popup-blocked':
+      return 'Your browser blocked the sign-in popup. Allow popups and try again.'
+    case 'auth/unauthorized-domain':
+      return 'This site is not allowed to sign in with Google yet. Please try again later.'
     default:
       return 'Something went wrong. Please try again.'
   }

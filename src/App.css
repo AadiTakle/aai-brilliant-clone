@@ -116,6 +116,49 @@ main {
   color: var(--color-muted);
 }
 
+/* "or" divider between the email form and the Google button. */
+.auth-divider {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin: var(--space-4) 0;
+  color: var(--color-muted);
+  font-size: 0.85rem;
+}
+.auth-divider::before,
+.auth-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--color-border);
+}
+
+/* "Continue with Google" button — neutral surface, full width like submit. */
+.google-signin {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  width: 100%;
+  background: var(--color-surface);
+  color: var(--color-text);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md, 10px);
+  padding: var(--space-3);
+  font-weight: 600;
+  cursor: pointer;
+}
+.google-signin:hover:not(:disabled) {
+  background: var(--color-bg);
+}
+.google-signin:disabled {
+  opacity: 0.65;
+  cursor: default;
+}
+.google-signin-icon {
+  flex: 0 0 auto;
+}
+
 /* ---------- Home ---------- */
 .home-header {
   text-align: center;

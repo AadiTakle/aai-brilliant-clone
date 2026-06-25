@@ -17,6 +17,7 @@ export function makeAuthValue(overrides: Partial<AuthContextValue> = {}): AuthCo
     loading: false,
     signUp: vi.fn(async () => {}),
     signIn: vi.fn(async () => {}),
+    signInWithGoogle: vi.fn(async () => {}),
     logOut: vi.fn(async () => {}),
     refreshProfile: vi.fn(async () => {}),
     ...overrides,

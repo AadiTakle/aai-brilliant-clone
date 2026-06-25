@@ -74,4 +74,18 @@ describe('[Phase 1] mapAuthError', () => {
   it('falls back for unknown codes', () => {
     expect(mapAuthError('auth/whatever')).toMatch(/something went wrong/i)
   })
+
+  it('maps a blocked Google popup to a helpful message', () => {
+    expect(mapAuthError('auth/popup-blocked')).toMatch(/popup/i)
+  })
+
+  it('maps account-exists-with-different-credential to a try-another-way message', () => {
+    expect(mapAuthError('auth/account-exists-with-different-credential')).toMatch(
+      /already exists/i,
+    )
+  })
+
+  it('maps an unauthorized domain to a friendly message', () => {
+    expect(mapAuthError('auth/unauthorized-domain')).toMatch(/not allowed|try again/i)
+  })
 })

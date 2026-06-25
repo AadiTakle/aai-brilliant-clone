@@ -1,13 +1,15 @@
 import {
   createUserWithEmailAndPassword,
+  GoogleAuthProvider,
   signInWithEmailAndPassword,
+  signInWithPopup,
   signOut,
   updateProfile,
   type Auth,
   type User,
 } from 'firebase/auth'
 import type { Firestore } from 'firebase/firestore'
-import { createUserProfile } from '../lib/users'
+import { createUserProfile, getUserProfile } from '../lib/users'
 
 export interface SignUpParams {
   email: string
@@ -36,6 +38,27 @@ export function signIn(
   password: string,
 ): Promise<unknown> {
   return signInWithEmailAndPassword(auth, email, password)
+}
+
+/**
+ * Signs the user in with a Google popup. For a first-time Google user (no
+ * users/{uid} profile yet) it creates the profile from the Google account's
+ * display name + email. Returning users keep their existing profile untouched —
+ * we check-before-create because createUserProfile would otherwise reset their
+ * aggregate stats (totalPoints, currentStreak, ...) back to zero. Returns the
+ * signed-in user.
+ */
+export async function signInWithGoogle(auth: Auth, db: Firestore): Promise<User> {
+  const cred = await signInWithPopup(auth, new GoogleAuthProvider())
+  const { uid, displayName, email } = cred.user
+  const existing = await getUserProfile(db, uid)
+  if (!existing) {
+    await createUserProfile(db, uid, {
+      displayName: displayName ?? email?.split('@')[0] ?? 'Learner',
+      email: email ?? '',
+    })
+  }
+  return cred.user
 }
 
 export function logOut(auth: Auth): Promise<void> {

@@ -2,6 +2,7 @@ import { useRef, useState, type FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { FirebaseError } from 'firebase/app'
 import { useAuth } from './useAuth'
+import { GoogleSignInButton } from './GoogleSignInButton'
 import { mapAuthError, validateSignIn, type SignInErrors } from './validation'
 
 export function SignInPage() {
@@ -78,6 +79,10 @@ export function SignInPage() {
           {submitting ? 'Signing in…' : 'Sign in'}
         </button>
       </form>
+      <div className="auth-divider" role="separator">
+        <span>or</span>
+      </div>
+      <GoogleSignInButton />
       <p>
         New here? <Link to="/sign-up">Create an account</Link>
       </p>
