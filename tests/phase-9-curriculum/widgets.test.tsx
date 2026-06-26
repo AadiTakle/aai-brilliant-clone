@@ -30,6 +30,15 @@ import { RemainderMachine } from '../../src/problem-types/article/widgets/Remain
 import { CodeTracer } from '../../src/problem-types/article/widgets/CodeTracer'
 import { ProgramStepper } from '../../src/problem-types/article/widgets/ProgramStepper'
 import { DecisionMachine } from '../../src/problem-types/article/widgets/DecisionMachine'
+import { Checkpoint } from '../../src/problem-types/article/Checkpoint'
+import { buildFunctionMachineSource } from '../../src/problem-types/article/widgets/functionMachineSource'
+import { runPython } from '../../src/lib/pyodide/runner'
+
+// FunctionMachine "run" mode executes real Python via the runner; mock it so the
+// UI behavior can be exercised without loading Pyodide. (Nothing else in this
+// file calls the runner.)
+vi.mock('../../src/lib/pyodide/runner', () => ({ runPython: vi.fn() }))
+const mockRunPython = vi.mocked(runPython)
 
 function mockMatchMedia(reduce: boolean) {
   window.matchMedia = vi.fn().mockImplementation((query: string) => ({
@@ -350,226 +359,192 @@ describe('[L2] ValueBox — drop a value into the box', () => {
   })
 })
 
-describe('[Phase 9] FunctionMachine', () => {
-  it('reveals outputs and completes after the last case', async () => {
+describe('[Phase 9] FunctionMachine — stepped three-bay machine', () => {
+  const config = { fnName: 'print', cases: [{ input: 'Hi', output: 'Hi' }] }
+  const stepBtn = () => screen.getByRole('button', { name: /^step$/i })
+  const label = (c: HTMLElement) => c.querySelector('.fm-machine-label')?.textContent
+
+  it('renders three bays: a quoted editable input, an empty machine, and a console', () => {
+    mockMatchMedia(false)
+    const { container } = render(<FunctionMachine config={config} />)
+    expect(container.querySelector('.fm-line')).toBeTruthy()
+    expect(container.querySelector('[data-machine]')).toBeTruthy()
+    const input = screen.getByLabelText('input')
+    const field = within(input).getByRole('textbox', { name: /input text/i }) as HTMLInputElement
+    expect(field.value).toBe('Hi')
+    // The field is flanked by two quote glyphs.
+    expect(input.querySelectorAll('.fm-quote').length).toBe(2)
+    // Machine starts empty; console starts empty.
+    expect(label(container)).toBe('print()')
+    expect(screen.getByLabelText('output').querySelector('.fm-token')).toBeNull()
+    expect(container.querySelector('[data-widget="function_machine"]')?.getAttribute('data-motion')).toBe('full')
+  })
+
+  it('Step 1 feeds the quoted value into the machine and locks the field', async () => {
+    mockMatchMedia(false)
+    const user = userEvent.setup()
+    const { container } = render(<FunctionMachine config={config} />)
+    const field = screen.getByRole('textbox', { name: /input text/i })
+    await user.clear(field)
+    await user.type(field, 'Mango')
+    await user.click(stepBtn())
+    expect(label(container)).toBe('print("Mango")')
+    // Field is now read-only (the textbox is gone).
+    expect(screen.queryByRole('textbox', { name: /input text/i })).toBeNull()
+    expect(container.querySelector('[data-widget="function_machine"]')?.getAttribute('data-running')).toBe('true')
+  })
+
+  it('Step 2 drops the bare value (no quotes) into the console and completes', async () => {
+    mockMatchMedia(false)
     const user = userEvent.setup()
     const onComplete = vi.fn()
-    render(
-      <FunctionMachine config={{ fnName: 'print', cases: [{ input: '"Hi"', output: 'Hi' }] }} onComplete={onComplete} />,
+    const { container } = render(<FunctionMachine config={config} onComplete={onComplete} />)
+    const field = screen.getByRole('textbox', { name: /input text/i })
+    await user.clear(field)
+    await user.type(field, 'Mango')
+    await user.click(stepBtn())
+    await user.click(stepBtn())
+    const output = screen.getByLabelText('output')
+    expect(output).toHaveTextContent('Mango')
+    expect(output.querySelectorAll('.fm-quote').length).toBe(0)
+    expect(onComplete).toHaveBeenCalledTimes(1)
+    // No third step.
+    expect((container.querySelector('.btn-machine') as HTMLButtonElement).disabled).toBe(true)
+  })
+
+  it('Reset re-arms the machine back to an editable input', async () => {
+    mockMatchMedia(false)
+    const user = userEvent.setup()
+    render(<FunctionMachine config={config} />)
+    await user.click(stepBtn())
+    await user.click(stepBtn())
+    await user.click(screen.getByRole('button', { name: /^reset$/i }))
+    expect(screen.getByRole('textbox', { name: /input text/i })).toBeTruthy()
+    expect(screen.getByLabelText('output').querySelector('.fm-token')).toBeNull()
+  })
+
+  it('shows per-phase commentary and honors lesson overrides', async () => {
+    mockMatchMedia(false)
+    const user = userEvent.setup()
+    const { container } = render(
+      <FunctionMachine config={{ ...config, feedNote: 'FED-NOTE', emitNote: 'EMIT-NOTE' }} />,
     )
-    await user.click(screen.getByRole('button', { name: /run print/i }))
+    const note = () => container.querySelector('.fm-commentary')?.textContent ?? ''
+    expect(note()).toMatch(/type a value/i)
+    await user.click(stepBtn())
+    expect(note()).toBe('FED-NOTE')
+    await user.click(stepBtn())
+    expect(note()).toBe('EMIT-NOTE')
+  })
+
+  it('is fully steppable under reduced motion (snaps, still completes)', async () => {
+    mockMatchMedia(true)
+    const user = userEvent.setup()
+    const onComplete = vi.fn()
+    const { container } = render(<FunctionMachine config={config} onComplete={onComplete} />)
+    expect(container.querySelector('[data-widget="function_machine"]')?.getAttribute('data-motion')).toBe('reduced')
+    await user.click(stepBtn())
+    expect(label(container)).toBe('print("Hi")')
+    await user.click(stepBtn())
     expect(screen.getByLabelText('output')).toHaveTextContent('Hi')
     expect(onComplete).toHaveBeenCalledTimes(1)
   })
+
+  describe('run mode (real Python via code)', () => {
+    const runConfig = {
+      fnName: 'fib',
+      quoted: false,
+      cases: [{ input: '10' }],
+      code: 'def fib(n):\n    a, b = 0, 1\n    for _ in range(n):\n        a, b = b, a + b\n    return a',
+      successMessage: 'Memoized and fast!',
+    }
+
+    it('builds source that defines and calls the function with the seed input', () => {
+      const src = buildFunctionMachineSource('fib', runConfig.code, '10', false)
+      expect(src).toContain('def fib(n):')
+      expect(src).toContain('__fm_out = fib(10)')
+      expect(src).toContain('print(__fm_out)')
+    })
+
+    it('quotes string inputs as Python string literals', () => {
+      expect(buildFunctionMachineSource('shout', 'def shout(s):\n    return s', 'hi', true)).toContain(
+        '__fm_out = shout("hi")',
+      )
+    })
+
+    it('runs the script and shows the REAL output, then completes', async () => {
+      mockMatchMedia(false)
+      mockRunPython.mockResolvedValueOnce({ stdout: '55\n', error: null })
+      const user = userEvent.setup()
+      const onComplete = vi.fn()
+      render(<FunctionMachine config={runConfig} onComplete={onComplete} />)
+      // Run mode uses a Run button, not Step.
+      expect(screen.queryByRole('button', { name: /^step$/i })).toBeNull()
+      await user.click(screen.getByRole('button', { name: /^run$/i }))
+      await waitFor(() => expect(screen.getByLabelText('output')).toHaveTextContent('55'))
+      expect(mockRunPython).toHaveBeenCalledTimes(1)
+      expect(mockRunPython.mock.calls[0][0]).toContain('__fm_out = fib(10)')
+      expect(screen.getByText('Memoized and fast!')).toBeTruthy()
+      expect(onComplete).toHaveBeenCalledTimes(1)
+    })
+
+    it('surfaces a Python error from the script', async () => {
+      mockMatchMedia(false)
+      mockRunPython.mockResolvedValueOnce({ stdout: '', error: 'NameError: name x is not defined' })
+      const user = userEvent.setup()
+      render(<FunctionMachine config={runConfig} />)
+      await user.click(screen.getByRole('button', { name: /^run$/i }))
+      await waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent(/NameError/))
+    })
+  })
+
+  it('works for a named machine too (L8 usage)', async () => {
+    mockMatchMedia(false)
+    const user = userEvent.setup()
+    const { container } = render(
+      <FunctionMachine config={{ fnName: 'machine', cases: [{ input: 'Hello!', output: 'Hello!' }] }} />,
+    )
+    expect(label(container)).toBe('machine()')
+    await user.click(stepBtn())
+    expect(label(container)).toBe('machine("Hello!")')
+  })
+
+  it('schema still accepts the legacy editable/echoInput flags and defaults quoted=true', () => {
+    expect(() =>
+      functionMachineConfigSchema.parse({
+        fnName: 'print',
+        editable: true,
+        echoInput: true,
+        cases: [{ input: 'Hello!', output: 'Hello!' }],
+      }),
+    ).not.toThrow()
+    const parsed = functionMachineConfigSchema.parse({ fnName: 'double', cases: [{ input: '4', output: '8' }] })
+    expect(parsed.quoted).toBe(true)
+  })
 })
 
-describe('[L1] FunctionMachine assembly-line animation', () => {
-  function mockMatchMedia(reduce: boolean) {
-    window.matchMedia = vi.fn().mockImplementation((query: string) => ({
-      matches: reduce && query.includes('prefers-reduced-motion'),
-      media: query,
-      addEventListener: vi.fn(),
-      removeEventListener: vi.fn(),
-      addListener: vi.fn(),
-      removeListener: vi.fn(),
-      onchange: null,
-      dispatchEvent: vi.fn(),
-    }))
-  }
-
-  it('renders an assembly line: input, a machine, and an output console', () => {
-    mockMatchMedia(false)
-    const { container } = render(
-      <FunctionMachine config={{ fnName: 'print', cases: [{ input: '"Hi"', output: 'Hi' }] }} />,
-    )
-    expect(container.querySelector('.fm-line')).toBeTruthy()
-    expect(container.querySelector('[data-machine]')).toBeTruthy()
-    expect(screen.getByLabelText('input')).toBeTruthy()
-    expect(screen.getByLabelText('output')).toBeTruthy()
-  })
-
-  it('animates by default and marks parts in-flight on Run', async () => {
+describe('Incorrect feedback replays on every wrong attempt', () => {
+  it('re-keys the Checkpoint incorrect banner so the shake restarts each Check', async () => {
     mockMatchMedia(false)
     const user = userEvent.setup()
-    const { container } = render(
-      <FunctionMachine config={{ fnName: 'print', cases: [{ input: '"Hi"', output: 'Hi' }] }} />,
+    render(
+      <Checkpoint
+        block={{
+          kind: 'checkpoint',
+          prompt: 'Pick the wrong one on purpose',
+          choices: ['right', 'wrong'],
+          answerIndex: 0,
+        }}
+      />,
     )
-    const root = container.querySelector('[data-widget="function_machine"]')!
-    expect(root.getAttribute('data-motion')).toBe('full')
-    await user.click(screen.getByRole('button', { name: /run print/i }))
-    expect(root.getAttribute('data-running')).toBe('true')
-  })
-
-  it('respects prefers-reduced-motion (instant, no animation)', () => {
-    mockMatchMedia(true)
-    const { container } = render(
-      <FunctionMachine config={{ fnName: 'print', cases: [{ input: '"Hi"', output: 'Hi' }] }} />,
-    )
-    const root = container.querySelector('[data-widget="function_machine"]')!
-    expect(root.getAttribute('data-motion')).toBe('reduced')
-  })
-})
-
-describe('[L1] FunctionMachine editable input + echo typewriter', () => {
-  const editableConfig = {
-    fnName: 'print',
-    editable: true,
-    echoInput: true,
-    cases: [{ input: 'Hello!', output: 'Hello!' }],
-  }
-
-  it('schema accepts the opt-in editable/echo flags', () => {
-    expect(() => functionMachineConfigSchema.parse(editableConfig)).not.toThrow()
-    // both flags default to false (preset mode) when omitted
-    const preset = functionMachineConfigSchema.parse({ fnName: 'double', cases: [{ input: '4', output: '8' }] })
-    expect(preset.editable).toBe(false)
-    expect(preset.echoInput).toBe(false)
-  })
-
-  it('renders one "Input:" block with the field — no print( ) wrapper around it', async () => {
-    mockMatchMedia(false)
-    const user = userEvent.setup()
-    const { container } = render(<FunctionMachine config={editableConfig} />)
-    const block = container.querySelector('.fm-edit-block')!
-    expect(block).toBeTruthy()
-    expect(block.textContent).toMatch(/input:/i)
-    // The input area must NOT wrap the field in a print(...) literal.
-    expect(block.textContent).not.toMatch(/print\(/)
-    const field = screen.getByRole('textbox', { name: /input text/i }) as HTMLInputElement
-    expect(field.value).toBe('Hello!')
-    await user.clear(field)
-    await user.type(field, 'Pizza')
-    expect(field.value).toBe('Pizza')
-  })
-
-  it('on Run, the Input block is consumed and the console types the entered text', async () => {
-    mockMatchMedia(false)
-    const user = userEvent.setup()
-    const { container } = render(<FunctionMachine config={editableConfig} />)
-    const field = screen.getByRole('textbox', { name: /input text/i })
-    await user.clear(field)
-    await user.type(field, 'Banana')
-    // Output box starts empty.
-    expect(screen.getByLabelText('output').textContent).toBe('')
-    await user.click(screen.getByRole('button', { name: /run print/i }))
-    // The whole Input block is consumed / in-flight into the machine.
-    expect(container.querySelector('.fm-edit-block')?.getAttribute('data-phase')).toBe('consuming')
-    await waitFor(
-      () => {
-        expect(screen.getByLabelText('output').textContent).toBe('Banana')
-      },
-      { timeout: 5000 },
-    )
-  })
-
-  it('the Input block reappears (slides in from the right) and a second Run works', async () => {
-    mockMatchMedia(false)
-    const user = userEvent.setup()
-    const { container } = render(<FunctionMachine config={editableConfig} />)
-    const field = screen.getByRole('textbox', { name: /input text/i }) as HTMLInputElement
-    await user.clear(field)
-    await user.type(field, 'Banana')
-    await user.click(screen.getByRole('button', { name: /run print/i }))
-    // After the line finishes printing, the Input block comes back (reappearing).
-    await waitFor(
-      () => {
-        expect(screen.getByLabelText('output').textContent).toBe('Banana')
-        expect(container.querySelector('.fm-edit-block')?.getAttribute('data-phase')).toBe('reappearing')
-      },
-      { timeout: 5000 },
-    )
-    // It is editable again: change the text and Run a second time.
-    await user.clear(field)
-    await user.type(field, 'Mango')
-    expect(field.value).toBe('Mango')
-    await user.click(screen.getByRole('button', { name: /run print/i }))
-    await waitFor(
-      () => {
-        expect(screen.getByLabelText('output').textContent).toBe('Mango')
-      },
-      { timeout: 5000 },
-    )
-  })
-
-  it('shows a caret while typing and removes it once the line has printed', async () => {
-    mockMatchMedia(false)
-    const user = userEvent.setup()
-    const { container } = render(<FunctionMachine config={editableConfig} />)
-    const field = screen.getByRole('textbox', { name: /input text/i })
-    await user.clear(field)
-    await user.type(field, 'Banana')
-    await user.click(screen.getByRole('button', { name: /run print/i }))
-    // Caret is visible during typing.
-    expect(container.querySelector('.fm-caret')).toBeTruthy()
-    // ...and disappears once printing finishes.
-    await waitFor(
-      () => {
-        expect(screen.getByLabelText('output').textContent).toBe('Banana')
-        expect(container.querySelector('.fm-caret')).toBeNull()
-      },
-      { timeout: 5000 },
-    )
-  })
-
-  it('reduced motion fills the output instantly with no caret, and stays editable', async () => {
-    mockMatchMedia(true)
-    const user = userEvent.setup()
-    const { container } = render(
-      <FunctionMachine config={{ ...editableConfig, cases: [{ input: 'Hi', output: 'Hi' }] }} />,
-    )
-    const field = screen.getByRole('textbox', { name: /input text/i }) as HTMLInputElement
-    await user.click(screen.getByRole('button', { name: /run print/i }))
-    expect(screen.getByLabelText('output').textContent).toBe('Hi')
-    expect(container.querySelector('.fm-caret')).toBeNull()
-    // Reduced motion: the Input block reappears instantly (no slide animation).
-    expect(container.querySelector('.fm-edit-block')?.getAttribute('data-phase')).toBe('ready')
-    // Still editable + a second Run works.
-    await user.clear(field)
-    await user.type(field, 'Yo')
-    expect(field.value).toBe('Yo')
-    await user.click(screen.getByRole('button', { name: /run print/i }))
-    expect(screen.getByLabelText('output').textContent).toBe('Yo')
-  })
-
-  it('the machine morphs to the exact print("...") call for the entered text', async () => {
-    mockMatchMedia(false)
-    const user = userEvent.setup()
-    const { container } = render(<FunctionMachine config={editableConfig} />)
-    const field = screen.getByRole('textbox', { name: /input text/i })
-    const label = () => container.querySelector('.fm-machine-label')!
-    // Static before any run.
-    expect(label().textContent).toBe('print( )')
-    await user.clear(field)
-    await user.type(field, 'Mango')
-    await user.click(screen.getByRole('button', { name: /run print/i }))
-    // As the input is consumed, the machine shows the exact Python call.
-    expect(label().textContent).toBe('print("Mango")')
-  })
-
-  it('shows the exact print("...") syntax under reduced motion too', async () => {
-    mockMatchMedia(true)
-    const user = userEvent.setup()
-    const { container } = render(<FunctionMachine config={editableConfig} />)
-    const field = screen.getByRole('textbox', { name: /input text/i })
-    await user.clear(field)
-    await user.type(field, 'Kiwi')
-    await user.click(screen.getByRole('button', { name: /run print/i }))
-    expect(container.querySelector('.fm-machine-label')?.textContent).toBe('print("Kiwi")')
-  })
-
-  it('preset-cases mode (L8 usage) is unchanged: no Input block, no text field, preset output, static label', async () => {
-    mockMatchMedia(false)
-    const user = userEvent.setup()
-    const { container } = render(<FunctionMachine config={{ fnName: 'double', cases: [{ input: '4', output: '8' }] }} />)
-    expect(screen.queryByRole('textbox')).toBeNull()
-    expect(container.querySelector('.fm-edit-block')).toBeNull()
-    expect(container.querySelector('.fm-caret')).toBeNull()
-    await user.click(screen.getByRole('button', { name: /run double/i }))
-    expect(screen.getByLabelText('output')).toHaveTextContent('8')
-    // The preset machine never morphs into a dynamic call.
-    const label = container.querySelector('.fm-machine-label')
-    expect(label?.textContent).toBe('double( )')
-    expect(label?.textContent).not.toMatch(/double\("/)
+    // Choose the wrong option and check twice.
+    await user.click(screen.getByRole('radio', { name: 'wrong' }))
+    await user.click(screen.getByRole('button', { name: /check/i }))
+    const first = screen.getByRole('alert')
+    await user.click(screen.getByRole('button', { name: /check/i }))
+    const second = screen.getByRole('alert')
+    // A fresh node (remounted via changed key) means the entry animation replays.
+    expect(second).not.toBe(first)
   })
 })
 

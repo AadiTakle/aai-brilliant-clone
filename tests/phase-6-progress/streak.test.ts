@@ -1,5 +1,12 @@
 import { describe, it, expect } from 'vitest'
-import { dayDiff, isoDay, updateStreak } from '../../src/lib/progress/streak'
+import {
+  dayDiff,
+  getStreakCompletionDays,
+  getStreakDisplayDays,
+  isoDay,
+  normalizeIsoDay,
+  updateStreak,
+} from '../../src/lib/progress/streak'
 
 describe('[Phase 6] streak', () => {
   it('formats a local day as YYYY-MM-DD', () => {
@@ -43,5 +50,21 @@ describe('[Phase 6] streak', () => {
       currentStreak: 1,
       lastActiveDate: '2026-06-27',
     })
+  })
+
+  it('normalizes ISO dates to zero-padded form', () => {
+    expect(normalizeIsoDay('2026-6-3')).toBe('2026-06-03')
+  })
+
+  it('reconstructs streak completion days walking back with grace', () => {
+    expect(
+      getStreakCompletionDays(['2026-06-22', '2026-06-24', '2026-06-26'], 3, '2026-06-26'),
+    ).toEqual(['2026-06-22', '2026-06-24', '2026-06-26'])
+  })
+
+  it('includes grace days in the streak display (Wed + Fri streak of 3 shows Thu too)', () => {
+    expect(
+      getStreakDisplayDays(['2026-06-24', '2026-06-26'], 3, '2026-06-26'),
+    ).toEqual(['2026-06-24', '2026-06-25', '2026-06-26'])
   })
 })

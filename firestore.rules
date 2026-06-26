@@ -12,6 +12,14 @@ service cloud.firestore {
 
     match /users/{userId} {
       allow read, create, update: if isOwner(userId);
+
+      // Custom AI-generated lessons live under the owning user. Only the owner
+      // can read or write them. (In production the spend + write happen in the
+      // Callable Function via the Admin SDK, which bypasses these rules; this
+      // guards any client-side path.)
+      match /aiLessons/{lessonId} {
+        allow read, write: if isOwner(userId);
+      }
     }
 
     match /courses/{courseId} {

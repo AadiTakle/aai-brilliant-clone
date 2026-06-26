@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { weekActivity } from '../../src/lib/progress/week'
+import { rollingWeekActivity, weekActivity } from '../../src/lib/progress/week'
 
 // [Phase 8] weekly activity strip for the streak modal
 describe('[Phase 8] weekActivity', () => {
@@ -25,5 +25,19 @@ describe('[Phase 8] weekActivity', () => {
     const days = weekActivity([], today)
     expect(days[2].isToday).toBe(true)
     expect(days[0].isToday).toBe(false)
+  })
+
+  it('rollingWeekActivity shows the last 7 days ending today', () => {
+    const days = rollingWeekActivity([], today)
+    expect(days).toHaveLength(7)
+    expect(days[6].iso).toBe('2026-06-23')
+    expect(days[6].isToday).toBe(true)
+    expect(days[0].iso).toBe('2026-06-17')
+  })
+
+  it('rollingWeekActivity marks streak display days', () => {
+    const fri = new Date(2026, 5, 26)
+    const days = rollingWeekActivity(['2026-06-24', '2026-06-25', '2026-06-26'], fri)
+    expect(days.filter((d) => d.done)).toHaveLength(3)
   })
 })

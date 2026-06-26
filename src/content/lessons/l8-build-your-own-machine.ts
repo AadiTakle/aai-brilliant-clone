@@ -123,7 +123,7 @@ export const l8BuildYourOwnMachine = {
       config: {
         panels: [
           {
-            text: 'You have used machines that came with Python, like **`print`**. But you can also build your **own** machines! Every machine works the same way: an **input** goes in, the machine does its job, and an **output** comes out. Type something below, press Run, and watch it travel through your machine.',
+            text: 'You have used machines that came with Python, like **`print`**. But you can also build your **own** machines! Every machine works the same way: an **input** goes in, the machine does its job, and an **output** comes out. Type something below, then press Step to watch it travel through your machine.',
             activity: {
               kind: 'widget',
               widget: 'function_machine',
@@ -132,7 +132,11 @@ export const l8BuildYourOwnMachine = {
                 editable: true,
                 echoInput: true,
                 cases: [{ input: 'Hello!', output: 'Hello!' }],
-                caption: 'Feed the machine an input, hit Run, and an output comes out the other side.',
+                feedNote:
+                  'Your input rides into the machine and lands between its parentheses — that is where a machine takes what you feed it.',
+                emitNote:
+                  'The machine does its job and hands back an output. Out it comes the other side, ready to use.',
+                caption: 'Feed the machine an input, step it through, and an output comes out the other side.',
               },
             },
           },

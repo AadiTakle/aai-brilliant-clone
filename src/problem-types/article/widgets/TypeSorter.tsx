@@ -21,6 +21,9 @@ export function TypeSorter({ config, onComplete }: Props) {
   // A word that has just been answered and is sliding away (decorative only).
   const [leaving, setLeaving] = useState<{ label: string; key: number } | null>(null)
   const [wrong, setWrong] = useState(false)
+  // Bumped on each wrong pick so the incorrect banner re-keys and replays its
+  // shake, even when the learner taps the same wrong bucket again.
+  const [wrongAttempts, setWrongAttempts] = useState(0)
 
   const done = index >= items.length
 
@@ -38,6 +41,7 @@ export function TypeSorter({ config, onComplete }: Props) {
       setIndex((i) => i + 1)
     } else {
       setWrong(true)
+      setWrongAttempts((a) => a + 1)
     }
   }
 
@@ -87,7 +91,7 @@ export function TypeSorter({ config, onComplete }: Props) {
       )}
 
       {wrong && !done && (
-        <p role="alert" className="feedback feedback-incorrect">
+        <p key={wrongAttempts} role="alert" className="feedback feedback-incorrect">
           Not that bucket — look again: is it written in quotes, or is it a plain value you could do math with?
         </p>
       )}

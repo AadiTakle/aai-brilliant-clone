@@ -72,16 +72,37 @@ export const loopVisualizerConfigSchema = z.object({
 
 // --- Phase 9 widget config schemas (Python from Scratch curriculum) ---
 
-// A function shown as a "machine": feed an input, see the output appear.
+// A function shown as a "machine": the learner types a value, then STEPS it
+// through the machine — the quoted value rides into `fnName( )` and then drops
+// into the console as the bare output. Generic across `print` (L1) and a named
+// machine (L8).
 export const functionMachineConfigSchema = z.object({
   fnName: z.string().min(1),
-  cases: z.array(z.object({ input: z.string(), output: z.string() })).min(1),
+  // The starting value is seeded from cases[0].input. In the legacy ECHO mode
+  // the output mirrors the input (quotes dropped); in RUN mode (see `code`) the
+  // real output is computed. `cases` is kept for the initial seed; `output` is
+  // optional because run mode computes it.
+  cases: z.array(z.object({ input: z.string(), output: z.string().optional() })).min(1),
   caption: z.string().optional(),
-  // Opt-in: render the input as an editable text field (seeded from cases[0].input)
-  // so the learner types what to feed the machine. Off by default (preset cases).
+  // Whether the typed value is a string literal (shown wrapped in quotes that the
+  // machine drops on output, and passed as a quoted Python string in run mode).
+  quoted: z.boolean().default(true),
+  // RUN MODE: a real Python script that defines a function named `fnName`. When
+  // present, the widget actually executes `code`, feeds the learner's input
+  // through `fnName(input)`, and shows the REAL output it produces — instead of
+  // the fixed echo animation. This is what makes a "memoization" or any other
+  // named machine behave like the thing it claims to be.
+  code: z.string().optional(),
+  // Optional, lesson-true commentary overrides. Sensible templated defaults
+  // (using fnName) are used when omitted. `feedNote` shows as the value enters
+  // the machine, `emitNote` as the output appears, and `successMessage` is the
+  // final takeaway line (replacing the generic built-in one).
+  feedNote: z.string().optional(),
+  emitNote: z.string().optional(),
+  successMessage: z.string().optional(),
+  // Accepted for back-compat with existing lesson configs (no longer change
+  // behavior — the widget is always the editable step-through machine now).
   editable: z.boolean().default(false),
-  // Opt-in: on Run, the output box types out exactly what the learner entered
-  // (a console-style echo) instead of showing the preset case output. Off by default.
   echoInput: z.boolean().default(false),
 })
 

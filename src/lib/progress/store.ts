@@ -8,7 +8,7 @@ import {
   type Firestore,
 } from 'firebase/firestore'
 import type { LessonProgress } from './model'
-import { updateStreak } from './streak'
+import { updateStreak, normalizeIsoDay } from './streak'
 import type { UserProfile } from '../users'
 
 export function progressDocId(uid: string, lessonId: string): string {
@@ -63,14 +63,14 @@ export async function commitStepRewards(
     let currentStreak = data?.currentStreak ?? 0
     let lastActiveDate = data?.lastActiveDate ?? null
     const completedLessons = new Set(data?.completedLessons ?? [])
-    const activeDays = new Set(data?.activeDays ?? [])
+    const activeDays = new Set((data?.activeDays ?? []).map(normalizeIsoDay))
 
     if (input.lessonComplete) {
       const streak = updateStreak({ currentStreak, lastActiveDate }, input.today)
       currentStreak = streak.currentStreak
       lastActiveDate = streak.lastActiveDate
       completedLessons.add(input.lessonId)
-      activeDays.add(input.today)
+      activeDays.add(normalizeIsoDay(input.today))
     }
 
     tx.set(

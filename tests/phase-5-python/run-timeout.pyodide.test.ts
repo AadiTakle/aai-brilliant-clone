@@ -2,9 +2,10 @@ import { describe, it, expect, beforeAll } from 'vitest'
 import { loadPyodideRunner, runPython, DEFAULT_RUN_TIMEOUT_MS } from '../../src/lib/pyodide/runner'
 
 // [runner] Every Python run is bounded by a default wall-clock timeout. These run
-// under real Python (`npm run test:pyodide`). We use an async-yielding program so
-// the timer can fire deterministically (a pure-Python busy loop would block the JS
-// thread; hard-aborting that needs a Web Worker, which is out of scope).
+// under real Python (`npm run test:pyodide`) on the Node inline path, so we use an
+// async-yielding program the promise race can interrupt. In the browser, runs go
+// through a Web Worker that is terminated on timeout, which additionally hard-kills
+// non-yielding busy loops (`while True: pass`) — not exercisable from Node here.
 describe('[runner] Python run timeout', () => {
   beforeAll(async () => {
     await loadPyodideRunner()

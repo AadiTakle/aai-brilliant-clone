@@ -1,5 +1,6 @@
 {
   "name": "aai-brilliant-clone",
+  "description": "Pyxel — an interactive, learn-by-doing web app that teaches beginners Python by writing and running real Python in the browser (Pyodide), with block coding, Parsons puzzles, test-case grading, and progress/streaks.",
   "private": true,
   "version": "0.0.0",
   "type": "module",

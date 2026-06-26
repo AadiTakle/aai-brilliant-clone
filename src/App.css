@@ -689,6 +689,10 @@ button.ghost:hover:not(:disabled) {
   text-align: left;
   font-weight: 600;
   cursor: grab;
+  /* Allow page scroll/pan to start on a block while still letting dnd-kit's
+     press-delay TouchSensor own deliberate drags; also kills the 300ms
+     double-tap zoom delay so tap-to-pick feels instant. */
+  touch-action: manipulation;
 }
 
 .palette-item code {
@@ -834,177 +838,93 @@ button.ghost:hover:not(:disabled) {
   text-align: center;
 }
 
-/* The assembly line: input → machine → output, sitting on a conveyor belt. */
+/* Three bays — Input -> Machine -> Console — linked by short conduits. The
+   travelling value token rides slot-to-slot via Motion layout (FLIP). */
 .fm-line {
   position: relative;
   display: flex;
+  align-items: stretch;
+  justify-content: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+  padding: var(--space-3) var(--space-2);
+}
+
+.fm-bay {
+  position: relative;
+  display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: var(--space-3);
-  flex-wrap: nowrap;
-  padding: var(--space-3) var(--space-2) calc(var(--space-3) + 10px);
-  overflow: hidden;
+  gap: 6px;
+  flex: 1 1 0;
+  min-width: 120px;
+  padding: var(--space-2) var(--space-3);
+  border: 2px solid var(--color-border);
+  border-radius: var(--radius-md, 12px);
+  background: var(--color-surface);
 }
-/* the belt */
-.fm-line::after {
-  content: '';
-  position: absolute;
-  left: 6%;
-  right: 6%;
-  bottom: 8px;
+.fm-bay-label {
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+
+/* The short conveyor segments between bays. */
+.fm-conduit {
+  flex: 0 0 22px;
+  align-self: center;
   height: 6px;
   border-radius: 3px;
   background: repeating-linear-gradient(
     90deg,
     var(--color-border) 0,
-    var(--color-border) 10px,
-    transparent 10px,
-    transparent 20px
+    var(--color-border) 8px,
+    transparent 8px,
+    transparent 16px
   );
-  opacity: 0.7;
+  opacity: 0.8;
 }
 
-.fm-chip {
-  display: inline-block;
-  font-size: 0.95rem;
-  padding: 4px 8px;
+/* A slot is the cutout a token can sit in. */
+.fm-slot {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 2em;
+  min-width: 6ch;
+}
+.fm-machine-slot {
+  min-width: 4ch;
+}
+
+/* The travelling value token: quoted in the input/machine, bare in console. */
+.fm-token {
+  display: inline-flex;
+  align-items: center;
+  gap: 1px;
+  padding: 2px 6px;
   border-radius: var(--radius-sm);
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
+  background: color-mix(in srgb, var(--spark, #ffc93c) 16%, var(--color-surface));
+  border: 1px solid color-mix(in srgb, var(--spark, #ffc93c) 45%, var(--color-border));
+  font-family: var(--font-mono, monospace);
   white-space: nowrap;
 }
-.fm-input,
-.fm-output {
-  font-size: 0.95rem;
-  flex: 0 0 auto;
+.fm-quote {
+  color: var(--py-blue, var(--color-accent));
+  font-weight: 700;
 }
-.fm-output.console .fm-chip {
-  font-family: var(--font-mono, monospace);
-}
-
-/* The machine itself: a chunky box with a feed funnel and little gears. */
-.fm-box {
-  display: inline-block;
-  border: 2px solid var(--color-border);
-  border-radius: var(--radius-sm);
-  padding: var(--space-2) var(--space-3);
-  margin: var(--space-2) auto;
-  background: var(--color-surface);
-}
-.fm-machine {
-  position: relative;
-  display: inline-flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 4px;
-  min-width: 104px;
-  margin: 0;
-  background: linear-gradient(180deg, var(--color-surface), var(--color-bg, var(--color-surface)));
-  box-shadow: inset 0 -3px 0 rgba(0, 0, 0, 0.08);
-  transition: border-color 160ms ease, box-shadow 160ms ease, transform 160ms ease;
-}
-.fm-machine-funnel {
-  width: 0;
-  height: 0;
-  border-left: 12px solid transparent;
-  border-right: 12px solid transparent;
-  border-top: 10px solid var(--color-border);
-  margin-bottom: 2px;
-}
-.fm-machine-label {
-  font-size: 0.95rem;
-}
-.fm-machine-gears {
-  display: inline-flex;
-  gap: 6px;
-}
-.fm-gear {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  border: 2px solid var(--color-border);
-}
-.fm-box.is-running {
-  border-color: var(--color-accent);
-}
-.fm-machine.is-running {
-  box-shadow: 0 0 0 2px var(--color-accent), inset 0 -3px 0 rgba(0, 0, 0, 0.08);
-}
-
-/* --- Animation (default). The input slides into the machine; the output
-   emerges out the other side shortly after. --- */
-[data-widget='function_machine'][data-motion='full'] .fm-input .fm-chip {
-  transition: transform 900ms ease-in, opacity 900ms ease-in;
-}
-[data-widget='function_machine'][data-motion='full'] .fm-output .fm-chip {
-  transition: transform 700ms ease-out 900ms, opacity 700ms ease-out 900ms;
-}
-[data-widget='function_machine'][data-motion='full'][data-running='true'] .fm-input .fm-chip {
-  transform: translateX(60px) scale(0.85);
-  opacity: 0;
-}
-[data-widget='function_machine'][data-motion='full'][data-running='false'] .fm-output .fm-chip {
-  transform: translateX(-40px);
-  opacity: 0.35;
-}
-[data-widget='function_machine'][data-motion='full'][data-running='true'] .fm-output .fm-chip {
-  transform: translateX(0);
-  opacity: 1;
-}
-.fm-machine.is-running .fm-gear {
-  animation: fm-spin 900ms linear infinite;
-}
-@keyframes fm-spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-/* Reduced motion: no sliding / spinning, just an instant reveal. */
-[data-widget='function_machine'][data-motion='reduced'] .fm-input .fm-chip,
-[data-widget='function_machine'][data-motion='reduced'] .fm-output .fm-chip {
-  transition: none;
-  transform: none;
-  opacity: 1;
-}
-[data-widget='function_machine'][data-motion='reduced'] .fm-machine.is-running .fm-gear {
-  animation: none;
-}
-@media (prefers-reduced-motion: reduce) {
-  [data-widget='function_machine'] .fm-input .fm-chip,
-  [data-widget='function_machine'] .fm-output .fm-chip {
-    transition: none;
-    transform: none;
-    opacity: 1;
-  }
-  [data-widget='function_machine'] .fm-machine.is-running .fm-gear {
-    animation: none;
-  }
-}
-
-/* --- Editable input (opt-in). One "Input: <field>" block the learner edits;
-   on Run the whole block is consumed by the machine. --- */
-.fm-input {
-  position: relative;
-}
-.fm-edit-block {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 0.95rem;
-  padding: 6px 10px;
-  border-radius: var(--radius-sm);
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  transform-origin: right center;
-}
-.fm-edit-label {
-  font-weight: 600;
+.fm-token-value {
   color: var(--color-text);
+}
+.fm-token-readonly,
+.fm-token-bare {
+  font-weight: 600;
 }
 .fm-input-field {
   width: 9ch;
-  min-width: 6ch;
+  min-width: 5ch;
   font: inherit;
   font-family: var(--font-mono, monospace);
   color: var(--color-text);
@@ -1016,92 +936,85 @@ button.ghost:hover:not(:disabled) {
 }
 .fm-input-field:focus {
   outline: none;
-  border-bottom-color: var(--color-accent);
 }
 
-/* On Run (full motion) the whole Input block travels into the machine and is
-   consumed — it shrinks, slides toward the machine, and fades out. */
-[data-widget='function_machine'][data-motion='full'] .fm-edit-block[data-phase='consuming'] {
-  animation: fm-consume 850ms ease-in forwards;
+/* The machine box. */
+.fm-machine {
+  gap: 4px;
+  background: linear-gradient(180deg, var(--color-surface), var(--color-bg, var(--color-surface)));
+  box-shadow: inset 0 -3px 0 rgba(0, 0, 0, 0.08);
+  transition: border-color 160ms ease, box-shadow 160ms ease;
 }
-@keyframes fm-consume {
-  0% {
-    transform: translateX(0) scale(1);
-    opacity: 1;
-  }
-  60% {
-    opacity: 1;
-  }
-  100% {
-    transform: translateX(110px) scale(0.2);
-    opacity: 0;
-  }
+.fm-machine[data-phase='1'] {
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-accent) 50%, transparent),
+    inset 0 -3px 0 rgba(0, 0, 0, 0.08);
 }
-/* Once the line has printed, the Input block slides back IN from the right so
-   the learner can edit and Run again. */
-[data-widget='function_machine'][data-motion='full'] .fm-edit-block[data-phase='reappearing'] {
-  animation: fm-reappear 450ms ease-out forwards;
+.fm-machine-label {
+  font-family: var(--font-mono, monospace);
+  font-size: 1rem;
 }
-@keyframes fm-reappear {
-  0% {
-    transform: translateX(110px) scale(0.2);
-    opacity: 0;
-  }
-  100% {
-    transform: translateX(0) scale(1);
-    opacity: 1;
-  }
-}
-
-/* The echo console: starts empty, fills with the typed text. */
-.fm-output.console.is-echo {
+.fm-machine-gears {
   display: inline-flex;
-  align-items: center;
-  min-width: 12ch;
-  min-height: 2.2em;
-  padding: 6px 10px;
-  border-radius: var(--radius-sm);
+  gap: 6px;
+}
+.fm-gear {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  border: 2px solid var(--color-border);
+}
+.fm-machine[data-phase='1'] .fm-gear {
+  animation: fm-spin 1200ms linear infinite;
+  border-color: var(--color-accent);
+}
+@keyframes fm-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* The console keeps the dark mono terminal look; output value glows green. */
+.fm-output.console {
   background: #0f172a;
   color: #e2e8f0;
-  border: 1px solid var(--color-border);
-  font-family: var(--font-mono, monospace);
-  text-align: left;
+  border-color: #1e293b;
 }
-.fm-console-text {
-  white-space: pre;
+.fm-output.console .fm-bay-label {
+  color: #94a3b8;
 }
-/* The caret is only in the DOM while typing, so it can always blink. */
-.fm-caret {
-  display: inline-block;
-  width: 2px;
-  height: 1.1em;
-  margin-left: 2px;
-  background: #e2e8f0;
-  animation: fm-blink 800ms step-end infinite;
+.fm-output.console .fm-token {
+  background: transparent;
+  border-color: #334155;
 }
-@keyframes fm-blink {
-  0%,
-  100% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0;
-  }
+.fm-output.console .fm-token-value {
+  color: #4ade80;
 }
-[data-widget='function_machine'][data-motion='reduced'] .fm-edit-block {
-  animation: none;
+
+/* "step x of 2" readout + the per-phase commentary line. */
+.fm-progress {
+  font-size: 0.85rem;
+  color: var(--color-text-muted);
+  font-variant-numeric: tabular-nums;
 }
-[data-widget='function_machine'][data-motion='reduced'] .fm-caret {
+.fm-commentary {
+  margin: var(--space-2) auto 0;
+  max-width: 52ch;
+  font-size: 0.95rem;
+  color: var(--color-text-muted);
+}
+
+/* Reduced motion: Motion already disables the layout ride via
+   <MotionConfig reducedMotion="user">; also stop the spinning gears. */
+[data-widget='function_machine'][data-motion='reduced'] .fm-gear {
   animation: none;
 }
 @media (prefers-reduced-motion: reduce) {
-  [data-widget='function_machine'] .fm-edit-block {
-    animation: none;
-  }
-  [data-widget='function_machine'] .fm-caret {
+  [data-widget='function_machine'] .fm-gear {
     animation: none;
   }
 }
+
 
 .fm-controls,
 .vb-controls,
@@ -1900,6 +1813,8 @@ button.ghost:hover:not(:disabled) {
   border: 1.5px dashed var(--color-border);
   border-radius: var(--radius-sm);
   font-weight: 600;
+  /* Snappy tap-to-place on touch (no double-tap zoom delay). */
+  touch-action: manipulation;
 }
 
 .drop-zone-statement {
@@ -2624,6 +2539,32 @@ button.ghost:hover:not(:disabled) {
     flex-wrap: wrap;
   }
 
+  /* iOS zooms the page in when a focused field's font is < 16px. Bump the
+     inline block chips, the code editor, and operator dropdowns to 16px on
+     phones so tapping into them no longer triggers a jarring auto-zoom. */
+  .chip .chip-input,
+  .chip .chip-select {
+    font-size: 16px;
+  }
+
+  .cm-editor .cm-content,
+  .cm-editor .cm-scroller,
+  .cm-editor .cm-gutters {
+    font-size: 16px;
+  }
+
+  /* Round out the symbol keys to a full 44px touch target. */
+  .symbol-key {
+    min-width: 44px;
+  }
+
+  /* Let a Parsons line wrap instead of overflowing the viewport, so the
+     reorder/indent controls stay reachable on narrow phones. */
+  .parsons-line {
+    flex-wrap: wrap;
+    white-space: normal;
+  }
+
   .lesson-nav {
     flex-wrap: wrap;
     gap: var(--space-3);
@@ -2884,4 +2825,109 @@ button.ghost:hover:not(:disabled) {
 
 .problem.is-energized {
   border-color: color-mix(in srgb, var(--color-success) 45%, var(--color-border));
+}
+
+/* --- AI custom lessons --- */
+.nav-create {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.35rem 0.7rem;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--color-accent);
+  color: var(--color-accent);
+  font-weight: 600;
+  font-size: 0.85rem;
+  text-decoration: none;
+}
+
+.nav-create:hover {
+  background: var(--color-accent-soft);
+}
+
+.create-lesson {
+  max-width: 640px;
+  margin: 0 auto;
+  padding: 1.5rem 1rem 3rem;
+}
+
+.create-lesson-head h1 {
+  margin: 0.5rem 0 0.25rem;
+}
+
+.create-lesson-sub {
+  color: var(--color-muted);
+  margin: 0 0 0.75rem;
+}
+
+.create-lesson-balance {
+  font-weight: 600;
+}
+
+.create-lesson-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin: 1rem 0;
+}
+
+.create-lesson-form textarea {
+  width: 100%;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text);
+  padding: 0.75rem;
+  font: inherit;
+  resize: vertical;
+}
+
+.create-lesson-hint {
+  color: var(--color-muted);
+  font-size: 0.85rem;
+}
+
+.create-lesson-message {
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+  padding: 0.75rem 1rem;
+  margin: 1rem 0;
+}
+
+.create-lesson-message.is-refused {
+  border-color: var(--color-accent);
+  background: var(--color-accent-soft);
+}
+
+.create-lesson-message.is-error {
+  border-color: var(--color-danger);
+  background: var(--color-danger-soft);
+}
+
+.create-lesson-list {
+  margin-top: 1.5rem;
+}
+
+.create-lesson-empty {
+  color: var(--color-muted);
+}
+
+.ai-practice-tag {
+  margin-left: auto;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--color-muted);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-pill);
+  padding: 0.15rem 0.6rem;
+}
+
+.ai-simplified-tag {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--color-accent);
+  border: 1px solid var(--color-accent);
+  border-radius: var(--radius-pill);
+  padding: 0.15rem 0.6rem;
+  background: var(--color-accent-soft);
 }

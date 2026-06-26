@@ -1,15 +1,18 @@
 import { useEffect, useRef } from 'react'
 import { motion } from 'motion/react'
-import { weekActivity } from '../lib/progress/week'
+import { getStreakDisplayDays } from '../lib/progress/streak'
+import { rollingWeekActivity } from '../lib/progress/week'
 import { StreakBadge } from './StreakBadge'
 
 export function StreakModal({
   streak,
   activeDays,
+  lastActiveDate,
   onClose,
 }: {
   streak: number
   activeDays: string[]
+  lastActiveDate: string | null
   onClose: () => void
 }) {
   const dialogRef = useRef<HTMLDivElement>(null)
@@ -54,8 +57,9 @@ export function StreakModal({
     }
   }, [onClose])
 
-  const days = weekActivity(activeDays)
-  const doneThisWeek = days.filter((d) => d.done).length
+  const displayDays = getStreakDisplayDays(activeDays, streak, lastActiveDate)
+  const days = rollingWeekActivity(displayDays)
+  const litDays = days.filter((d) => d.done).length
 
   return (
     <motion.div
@@ -86,14 +90,14 @@ export function StreakModal({
               {streak > 0 ? `${streak}-day streak` : 'No streak yet'}
             </p>
             <p className="streak-modal-sub">
-              {doneThisWeek > 0
-                ? `${doneThisWeek} ${doneThisWeek === 1 ? 'day' : 'days'} this week`
+              {litDays > 0
+                ? `${litDays} ${litDays === 1 ? 'day' : 'days'} on your streak`
                 : 'Finish a lesson to light it up'}
             </p>
           </div>
         </div>
 
-        <ul className="week-strip" aria-label="This week's activity">
+        <ul className="week-strip" aria-label="Last 7 days of streak activity">
           {days.map((d) => (
             <li
               key={d.iso}

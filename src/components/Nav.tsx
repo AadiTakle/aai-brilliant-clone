@@ -47,6 +47,11 @@ export function Nav() {
 
       <div className="nav-actions">
         {user && (
+          <Link to="/create" className="nav-create" title="Create a lesson with AI">
+            + AI lesson
+          </Link>
+        )}
+        {user && (
           <div className="nav-stats">
             <button
               type="button"
@@ -105,6 +110,7 @@ export function Nav() {
           <StreakModal
             streak={profile?.currentStreak ?? 0}
             activeDays={profile?.activeDays ?? []}
+            lastActiveDate={profile?.lastActiveDate ?? null}
             onClose={() => setStreakOpen(false)}
           />
         )}

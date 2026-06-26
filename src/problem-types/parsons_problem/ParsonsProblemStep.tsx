@@ -48,6 +48,9 @@ function ParsonsBody({ title, config, onComplete, onGraded }: BodyProps) {
   const [bank, setBank] = useState<ParsonsLine[]>(() => shuffle(allLines, allLines.length * 97 + 13))
   const [solution, setSolution] = useState<SolutionLine[]>([])
   const [result, setResult] = useState<ParsonsGradeResult | null>(null)
+  // Bumped on every Check so a repeated wrong answer re-keys (and replays) the
+  // incorrect-feedback shake instead of leaving it statically mounted.
+  const [checks, setChecks] = useState(0)
 
   const solved = result?.correct ?? false
 
@@ -98,6 +101,7 @@ function ParsonsBody({ title, config, onComplete, onGraded }: BodyProps) {
   }
 
   function check() {
+    setChecks((c) => c + 1)
     const graded = gradeParsons(
       solution.map((l) => ({ id: l.id, indent: l.indent })),
       config.lines.map((l) => ({ id: l.id, indent: l.indent })),
@@ -183,6 +187,7 @@ function ParsonsBody({ title, config, onComplete, onGraded }: BodyProps) {
 
       {result && (
         <p
+          key={result.correct ? 'ok' : `wrong-${checks}`}
           role={result.correct ? 'status' : 'alert'}
           className={`feedback ${result.correct ? 'feedback-correct' : 'feedback-incorrect'}`}
         >

@@ -20,7 +20,7 @@ export const l1TalkingToTheComputer = {
       config: {
         panels: [
           {
-            text: 'Think of **`print`** as a machine on an assembly line. You drop something into its parentheses, it rides down the belt *into* the machine, and out the other side comes the **output** — your words shown on the screen. Type anything you like, press Run, and watch your words travel through.',
+            text: 'Think of **`print`** as a machine on an assembly line. You drop something into its parentheses, it rides down the belt *into* the machine, and out the other side comes the **output** — your words shown on the screen. Type anything you like, then press Step to watch your words travel through.',
             activity: {
               kind: 'widget',
               widget: 'function_machine',
@@ -29,7 +29,11 @@ export const l1TalkingToTheComputer = {
                 editable: true,
                 echoInput: true,
                 cases: [{ input: 'Hello!', output: 'Hello!' }],
-                caption: 'Type your own words, hit Run, and the print machine shows them on the screen.',
+                feedNote:
+                  'The quotation marks tell Python "this is text". They ride into print(  ) with your words and land between the parentheses — that is what print works on.',
+                emitNote:
+                  'print shows your words on the screen. The quotes were just labels for Python, so they drop away — the screen shows the words themselves.',
+                caption: 'Type your own words, step it through, and the print machine shows them on the screen.',
               },
             },
           },

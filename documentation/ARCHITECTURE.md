@@ -132,6 +132,19 @@ shared chassis is what keeps the bespoke widget interiors cohesive when several
 are combined in one article. Reduced-motion is read once via the shared
 [lib/ui/motion.ts](../src/lib/ui/motion.ts) `useReducedMotion()` helper.
 
+**`function_machine`** ([FunctionMachine.tsx](../src/problem-types/article/widgets/FunctionMachine.tsx))
+is a generic, **step-through three-bay machine** used by both L1 (`print`) and L8
+(a named `machine`). The learner types a value into the **Input** bay (a quoted,
+editable field), then presses **Step**: phase 1 rides the quoted value-token into
+the machine's parentheses — `fnName(  )` becomes `fnName("Hi")` and the field goes
+read-only — and phase 2 drops the **bare** value (quotes shed) into the dark
+**Console**, firing `onComplete()`. A single Motion `layoutId="fm-token"` element
+animates slot-to-slot (FLIP); under `prefers-reduced-motion` it simply snaps, and
+every phase is still reachable. **Reset** re-arms it. Each phase shows an
+`aria-live` commentary line; the schema accepts optional `feedNote`/`emitNote`
+overrides (and a `quoted` flag, default true) so L1 and L8 read true, while the
+legacy `editable`/`echoInput` flags are still parsed for back-compat.
+
 ## 6. Block engine ([src/lib/blocks/](../src/lib/blocks/))
 
 Scratch-style blocks whose labels **are** Python. Two categories:
@@ -258,6 +271,14 @@ up.** The pieces:
 - Shared CSS in [src/App.css](../src/App.css): `.is-energized`, the upgraded
   `.feedback-correct/.feedback-incorrect` system, `.btn-machine`/`.btn-ghost`, and
   the `WidgetFrame` chassis — all gated by `prefers-reduced-motion`.
+
+The `.feedback-incorrect` shake is a CSS **entry** animation, so a repeated wrong
+answer would otherwise stay statically mounted (no replay — the learner can't tell
+a dead button from a fresh wrong answer). Each graded surface therefore bumps a
+per-attempt counter on submit and uses it as the React `key` on the
+`feedback-incorrect` element, remounting it so the shake replays every time:
+Checkpoint, `BlockProblemStep`, `PythonSandboxStep`, `ParsonsProblemStep`, and the
+`TypeSorter` widget.
 
 ## 11. The curriculum & the coverage contract
 

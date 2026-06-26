@@ -38,6 +38,9 @@ function PythonSandboxBody({ title, config, onComplete, onGraded }: BodyProps) {
   const [error, setError] = useState<string | null>(null)
   const [grade, setGrade] = useState<PythonGradeResult | null>(null)
   const [solved, setSolved] = useState(false)
+  // Bumped on every Run so a repeated failure re-keys (and replays) the
+  // incorrect-feedback shake rather than leaving it statically mounted.
+  const [attempt, setAttempt] = useState(0)
 
   const graded = isPythonGraded(config.testCases)
 
@@ -52,6 +55,7 @@ function PythonSandboxBody({ title, config, onComplete, onGraded }: BodyProps) {
   }
 
   async function run() {
+    setAttempt((a) => a + 1)
     setRunning(true)
     setError(null)
     setGrade(null)
@@ -146,7 +150,7 @@ function PythonSandboxBody({ title, config, onComplete, onGraded }: BodyProps) {
         </pre>
       )}
       {error && (
-        <p role="alert" className="feedback feedback-incorrect">
+        <p key={`err-${attempt}`} role="alert" className="feedback feedback-incorrect">
           Error: {error}
         </p>
       )}
@@ -182,6 +186,7 @@ function PythonSandboxBody({ title, config, onComplete, onGraded }: BodyProps) {
             </div>
           ))}
           <p
+            key={grade.passed ? 'pass' : `fail-${attempt}`}
             role={grade.passed ? 'status' : 'alert'}
             className={`feedback ${grade.passed ? 'feedback-correct' : 'feedback-incorrect'}`}
           >

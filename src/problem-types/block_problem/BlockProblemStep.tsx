@@ -1,5 +1,12 @@
-import { useReducer, useState } from 'react'
-import { DndContext, type DragEndEvent } from '@dnd-kit/core'
+import { Fragment, useReducer, useState } from 'react'
+import {
+  DndContext,
+  MouseSensor,
+  TouchSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from '@dnd-kit/core'
 import type { StepRenderProps } from '../types'
 import type { BlockProblemConfig } from './schema'
 import { compileToSource } from '../../lib/blocks/compiler'
@@ -38,8 +45,21 @@ function BlockProblemBody({ title, config, onComplete, onGraded }: BodyProps) {
   const [printVarMissing, setPrintVarMissing] = useState(false)
   const [compareMissing, setCompareMissing] = useState(false)
   const [solved, setSolved] = useState(false)
+  // Bumped on every Run so a repeated wrong result re-keys (and replays) the
+  // incorrect-feedback shake instead of leaving it statically mounted.
+  const [attempt, setAttempt] = useState(0)
 
   const graded = config.mode !== 'sandbox' && config.expectedOutput !== undefined
+
+  // Split mouse/touch sensors so both pointers behave well:
+  // - Mouse: a small drag distance distinguishes a click (tap-to-place) from a drag.
+  // - Touch: a short press delay lets a quick tap fire the click fallback and lets
+  //   a scroll gesture (movement before the delay) pass through to the page, so
+  //   dragging a block no longer hijacks vertical scrolling on phones.
+  const sensors = useSensors(
+    useSensor(MouseSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 8 } }),
+  )
 
   function handleDragEnd(event: DragEndEvent) {
     const { active, over } = event
@@ -65,6 +85,7 @@ function BlockProblemBody({ title, config, onComplete, onGraded }: BodyProps) {
   }
 
   async function run() {
+    setAttempt((a) => a + 1)
     setRunning(true)
     setError(null)
     setGrade(null)
@@ -147,7 +168,7 @@ function BlockProblemBody({ title, config, onComplete, onGraded }: BodyProps) {
       {title && <h2>{title}</h2>}
       <p className="block-prompt">{config.prompt}</p>
 
-      <DndContext onDragEnd={handleDragEnd}>
+      <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
         <div className="block-layout">
           <Palette
             types={config.palette}
@@ -192,9 +213,10 @@ function BlockProblemBody({ title, config, onComplete, onGraded }: BodyProps) {
         </pre>
       )}
 
-      {error && <p className="feedback feedback-incorrect">Error: {error}</p>}
+      {error && <p key={`err-${attempt}`} className="feedback feedback-incorrect">Error: {error}</p>}
 
       {graded && grade && !error && (
+        <Fragment key={attempt}>{
         grade.correct ? (
           <p role="status" className="feedback feedback-correct">
             Correct! Your program produced the expected output.
@@ -224,6 +246,7 @@ function BlockProblemBody({ title, config, onComplete, onGraded }: BodyProps) {
             Not quite — compare your output to the goal and adjust your blocks.
           </p>
         )
+        }</Fragment>
       )}
 
       {graded && !grade?.correct && missing.length === 0 && !printVarMissing && !compareMissing && !reassignWrongLine && (() => {

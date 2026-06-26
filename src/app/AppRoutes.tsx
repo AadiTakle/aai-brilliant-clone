@@ -2,6 +2,8 @@ import { Route, Routes } from 'react-router-dom'
 import { CoursePage } from '../pages/CoursePage'
 import { LessonPage } from '../pages/LessonPage'
 import { ResultsPage } from '../pages/ResultsPage'
+import { CreateLessonPage } from '../pages/CreateLessonPage'
+import { AiLessonPage } from '../pages/AiLessonPage'
 import { SignInPage } from '../auth/SignInPage'
 import { SignUpPage } from '../auth/SignUpPage'
 import { RequireAuth } from '../auth/RequireAuth'
@@ -25,6 +27,22 @@ export function AppRoutes() {
         element={
           <RequireAuth>
             <ResultsPage />
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/create"
+        element={
+          <RequireAuth>
+            <CreateLessonPage />
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/ai-lessons/:lessonId"
+        element={
+          <RequireAuth>
+            <AiLessonPage />
           </RequireAuth>
         }
       />

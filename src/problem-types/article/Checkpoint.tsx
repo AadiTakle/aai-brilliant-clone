@@ -12,9 +12,13 @@ export function Checkpoint({ block, onComplete }: CheckpointProps) {
   const reduced = useReducedMotion()
   const [selected, setSelected] = useState<number | null>(null)
   const [result, setResult] = useState<'correct' | 'incorrect' | null>(null)
+  // Bumped on every Check so a repeated wrong answer re-keys (and replays) the
+  // shake — otherwise the banner stays mounted and the animation never restarts.
+  const [attempts, setAttempts] = useState(0)
 
   function check() {
     if (selected === null) return
+    setAttempts((a) => a + 1)
     if (selected === block.answerIndex) {
       setResult('correct')
       onComplete?.()
@@ -69,7 +73,7 @@ export function Checkpoint({ block, onComplete }: CheckpointProps) {
         </p>
       )}
       {result === 'incorrect' && (
-        <p role="alert" className="feedback feedback-incorrect">
+        <p key={attempts} role="alert" className="feedback feedback-incorrect">
           {block.feedback?.incorrect ?? 'Not quite — try again.'}
         </p>
       )}
