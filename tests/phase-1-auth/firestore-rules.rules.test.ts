@@ -32,16 +32,46 @@ describe('[Phase 1] firestore.rules', () => {
     await testEnv.clearFirestore()
   })
 
+  const initialProfile = {
+    displayName: 'Alice',
+    email: 'alice@example.com',
+    totalPoints: 0,
+    currentStreak: 0,
+    lastActiveDate: null,
+    completedLessons: [] as string[],
+    activeDays: [] as string[],
+  }
+
   describe('users/{uid}', () => {
-    it('lets the owner read and write their own profile', async () => {
+    it('lets the owner create a zeroed profile and read it', async () => {
       const alice = testEnv.authenticatedContext('alice').firestore()
-      await assertSucceeds(setDoc(doc(alice, 'users/alice'), { displayName: 'Alice' }))
+      await assertSucceeds(setDoc(doc(alice, 'users/alice'), initialProfile))
       await assertSucceeds(getDoc(doc(alice, 'users/alice')))
+    })
+
+    it('forbids creating a profile pre-loaded with Sparks', async () => {
+      const alice = testEnv.authenticatedContext('alice').firestore()
+      await assertFails(setDoc(doc(alice, 'users/alice'), { ...initialProfile, totalPoints: 9999 }))
+    })
+
+    it('lets the owner edit profile fields but never the balance', async () => {
+      await testEnv.withSecurityRulesDisabled(async (ctx) => {
+        await setDoc(doc(ctx.firestore(), 'users/alice'), { ...initialProfile, totalPoints: 300 })
+      })
+      const alice = testEnv.authenticatedContext('alice').firestore()
+      // Editing a profile field while leaving aggregates untouched is fine.
+      await assertSucceeds(
+        setDoc(doc(alice, 'users/alice'), { displayName: 'Alice 2' }, { merge: true }),
+      )
+      // Forging the balance is rejected — totalPoints is server-only.
+      await assertFails(setDoc(doc(alice, 'users/alice'), { totalPoints: 99999 }, { merge: true }))
+      // ...as is bumping the streak or completion history.
+      await assertFails(setDoc(doc(alice, 'users/alice'), { currentStreak: 50 }, { merge: true }))
     })
 
     it('forbids reading another user profile', async () => {
       await testEnv.withSecurityRulesDisabled(async (ctx) => {
-        await setDoc(doc(ctx.firestore(), 'users/alice'), { displayName: 'Alice' })
+        await setDoc(doc(ctx.firestore(), 'users/alice'), initialProfile)
       })
       const bob = testEnv.authenticatedContext('bob').firestore()
       await assertFails(getDoc(doc(bob, 'users/alice')))
@@ -50,6 +80,29 @@ describe('[Phase 1] firestore.rules', () => {
     it('forbids unauthenticated reads', async () => {
       const anon = testEnv.unauthenticatedContext().firestore()
       await assertFails(getDoc(doc(anon, 'users/alice')))
+    })
+  })
+
+  describe('users/{uid}/aiLessons', () => {
+    it('lets the owner read their custom lessons', async () => {
+      await testEnv.withSecurityRulesDisabled(async (ctx) => {
+        await setDoc(doc(ctx.firestore(), 'users/alice/aiLessons/x'), { title: 'T' })
+      })
+      const alice = testEnv.authenticatedContext('alice').firestore()
+      await assertSucceeds(getDoc(doc(alice, 'users/alice/aiLessons/x')))
+    })
+
+    it('forbids client writes (saves go through the Cloud Function)', async () => {
+      const alice = testEnv.authenticatedContext('alice').firestore()
+      await assertFails(setDoc(doc(alice, 'users/alice/aiLessons/x'), { title: 'Free lesson' }))
+    })
+  })
+
+  describe('rewards/{rewardId}', () => {
+    it('is server-only — clients can neither read nor write the ledger', async () => {
+      const alice = testEnv.authenticatedContext('alice').firestore()
+      await assertFails(setDoc(doc(alice, 'rewards/alice_l1-talking-to-the-computer'), { awarded: {} }))
+      await assertFails(getDoc(doc(alice, 'rewards/alice_l1-talking-to-the-computer')))
     })
   })
 

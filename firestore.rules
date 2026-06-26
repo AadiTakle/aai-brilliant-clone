@@ -10,20 +10,9 @@ service cloud.firestore {
       return isSignedIn() && request.auth.uid == userId;
     }
 
-    // Max Sparks a single client write may add to totalPoints. Points accrue one
-    // step at a time (base 100, never overridden), so this is generous headroom
-    // while blocking a one-shot balance forgery (e.g. setting totalPoints high
-    // enough to "buy" custom lessons for free). Spends are server-only (see
-    // below), so a client may never DECREASE the balance.
-    function pointsDeltaOk() {
-      let next = request.resource.data.totalPoints;
-      let prev = resource.data.totalPoints;
-      return next >= prev && next <= prev + 1000;
-    }
-
     // The profile doc may only ever contain these fields, and the currency-ish
-    // aggregates must be non-negative ints. This stops junk-field injection and
-    // type confusion on the doc the AI economy trusts for balances.
+    // aggregates must be non-negative ints. Stops junk-field injection and type
+    // confusion on the doc the Spark economy trusts for balances.
     function userShapeOk() {
       return request.resource.data.keys().hasOnly(
                ['displayName', 'email', 'totalPoints', 'currentStreak',
@@ -34,23 +23,47 @@ service cloud.firestore {
              && request.resource.data.currentStreak >= 0;
     }
 
+    // A new profile must start with zeroed aggregates — a client can't sign up
+    // with a pre-loaded balance.
+    function aggregatesAreInitial() {
+      return request.resource.data.totalPoints == 0
+             && request.resource.data.currentStreak == 0
+             && request.resource.data.lastActiveDate == null
+             && request.resource.data.completedLessons == []
+             && request.resource.data.activeDays == [];
+    }
+
+    // The Spark balance, streak, and completion history are SERVER-OWNED: they
+    // change only via the recordStepCompletion Cloud Function (Admin SDK, which
+    // bypasses these rules). A client update may edit profile fields but must
+    // leave every aggregate exactly as stored, so totalPoints can't be forged.
+    function aggregatesUnchanged() {
+      return request.resource.data.totalPoints == resource.data.totalPoints
+             && request.resource.data.currentStreak == resource.data.currentStreak
+             && request.resource.data.lastActiveDate == resource.data.lastActiveDate
+             && request.resource.data.completedLessons == resource.data.completedLessons
+             && request.resource.data.activeDays == resource.data.activeDays;
+    }
+
     match /users/{userId} {
       allow read: if isOwner(userId);
-      // Create starts the profile at zeroed aggregates; update is the only path
-      // the client uses to record earned points/streaks, so it must not let the
-      // balance be forged (server spends bypass rules via the Admin SDK).
-      allow create: if isOwner(userId) && userShapeOk();
-      allow update: if isOwner(userId) && userShapeOk() && pointsDeltaOk();
+      allow create: if isOwner(userId) && userShapeOk() && aggregatesAreInitial();
+      allow update: if isOwner(userId) && userShapeOk() && aggregatesUnchanged();
 
       // Custom AI-generated lessons live under the owning user. They are READ by
-      // the owner but WRITTEN only by the Callable Function (Admin SDK, which
-      // bypasses these rules). Blocking client writes is what makes the 500-Spark
-      // charge unavoidable — a client cannot persist a lesson without the server
-      // deducting the cost first.
+      // the owner but WRITTEN only by the Callable Function (Admin SDK). Blocking
+      // client writes is what makes the 500-Spark charge unavoidable.
       match /aiLessons/{lessonId} {
         allow read: if isOwner(userId);
         allow write: if false;
       }
+    }
+
+    // Server-only reward ledger (written by recordStepCompletion via the Admin
+    // SDK). Clients never read or write it; the balance they care about lives on
+    // their user doc.
+    match /rewards/{rewardId} {
+      allow read, write: if false;
     }
 
     match /courses/{courseId} {
@@ -58,6 +71,9 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    // Gameplay/resume state (current step, per-step status, last submission). This
+    // is the learner's own non-currency progress; points here are display-only —
+    // the authoritative balance is server-awarded on the user doc.
     match /progress/{progressId} {
       allow read, write: if isSignedIn()
         && progressId.matches('^' + request.auth.uid + '_.*');

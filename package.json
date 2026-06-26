@@ -16,7 +16,8 @@
     "test:emulator": "firebase emulators:exec --only auth,firestore \"vitest run --config vitest.emulator.config.ts\"",
     "test:pyodide": "vitest run --config vitest.pyodide.config.ts",
     "validate-content": "tsx scripts/validate-content.ts",
-    "deploy": "npm run build && firebase deploy --only hosting,firestore",
+    "gen-lesson-meta": "tsx scripts/gen-lesson-meta.ts",
+    "deploy": "npm run build && firebase deploy --only hosting,firestore,functions",
     "deploy:hosting": "npm run build && firebase deploy --only hosting"
   },
   "dependencies": {

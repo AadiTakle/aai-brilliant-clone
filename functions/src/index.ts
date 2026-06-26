@@ -5,6 +5,8 @@ import { getFirestore, FieldValue } from 'firebase-admin/firestore'
 import OpenAI from 'openai'
 import { buildRepairUserMessage, buildSystemPrompt, buildResponseSchema } from './lessonSpec.js'
 import { validateLessonStructure, MAX_LESSON_JSON_BYTES } from './validateLesson.js'
+import { BUILTIN_LESSON_META } from './builtinLessonMeta.js'
+import { awardStep, updateStreak, emptyLedger, type RewardLedger, type StreakState } from './rewards.js'
 
 initializeApp()
 
@@ -236,4 +238,89 @@ export const commitCustomLesson = onCall({ enforceAppCheck: true }, async (req) 
   })
 
   return record
+})
+
+interface RecordStepData {
+  lessonId?: string
+  stepId?: string
+  wrongAttempts?: number
+}
+
+// Server-authoritative Spark awards. The client reports which built-in step it
+// completed; the server computes the points from the bundled lesson metadata,
+// records them in a server-only ledger (so a step pays out at most once), and is
+// the SOLE writer of the user's balance/streak. This removes the client's ability
+// to forge totalPoints. App Check is not enforced here so core gameplay keeps
+// working without a reCAPTCHA key; abuse is naturally bounded because each step
+// can only ever be awarded once and points come from server-side content.
+export const recordStepCompletion = onCall(async (req) => {
+  if (!req.auth) {
+    throw new HttpsError('unauthenticated', 'Sign in to earn Sparks.')
+  }
+  const uid = req.auth.uid
+  const data = req.data as RecordStepData
+  const lessonId = String(data?.lessonId ?? '')
+  const stepId = String(data?.stepId ?? '')
+  const wrongAttemptsRaw = Number(data?.wrongAttempts ?? 0)
+  const wrongAttempts = Number.isFinite(wrongAttemptsRaw)
+    ? Math.max(0, Math.floor(wrongAttemptsRaw))
+    : 0
+
+  const meta = BUILTIN_LESSON_META[lessonId]
+  // Only the built-in curriculum awards Sparks. Custom AI lessons are practice
+  // only (and unknown lessons can't mint currency), so award nothing.
+  if (!meta) {
+    return { pointsDelta: 0, lessonComplete: false, awarded: false }
+  }
+  if (!meta.steps.some((s) => s.id === stepId)) {
+    throw new HttpsError('invalid-argument', 'Unknown step for this lesson.')
+  }
+
+  const db = getFirestore()
+  const userRef = db.doc(`users/${uid}`)
+  const ledgerRef = db.doc(`rewards/${uid}_${lessonId}`)
+  const today = new Date().toISOString().slice(0, 10) // server UTC day
+
+  return await db.runTransaction(async (tx) => {
+    const [userSnap, ledgerSnap] = await Promise.all([tx.get(userRef), tx.get(ledgerRef)])
+    const ledger: RewardLedger = ledgerSnap.exists
+      ? { awarded: (ledgerSnap.data()?.awarded as Record<string, number>) ?? {}, completed: Boolean(ledgerSnap.data()?.completed) }
+      : emptyLedger()
+
+    const outcome = awardStep(meta, ledger, stepId, wrongAttempts)
+    const u = userSnap.data() ?? {}
+    const currentTotal = (u.totalPoints as number) ?? 0
+    const newTotal = currentTotal + outcome.pointsDelta
+
+    const lessonComplete = ledger.completed || outcome.newlyCompleted
+
+    // Nothing new to record (step already awarded and lesson already marked
+    // complete): just report the current state.
+    if (outcome.pointsDelta === 0 && !outcome.newlyCompleted) {
+      return { pointsDelta: 0, lessonComplete, totalPoints: currentTotal, awarded: false }
+    }
+
+    const userUpdate: Record<string, unknown> = { totalPoints: newTotal }
+    let currentStreak = (u.currentStreak as number) ?? 0
+
+    if (outcome.newlyCompleted) {
+      const streakState: StreakState = {
+        currentStreak,
+        lastActiveDate: (u.lastActiveDate as string | null) ?? null,
+      }
+      const nextStreak = updateStreak(streakState, today)
+      currentStreak = nextStreak.currentStreak
+      const completedLessons: string[] = Array.isArray(u.completedLessons) ? (u.completedLessons as string[]) : []
+      const activeDays: string[] = Array.isArray(u.activeDays) ? (u.activeDays as string[]) : []
+      userUpdate.currentStreak = nextStreak.currentStreak
+      userUpdate.lastActiveDate = nextStreak.lastActiveDate
+      userUpdate.completedLessons = Array.from(new Set([...completedLessons, lessonId]))
+      userUpdate.activeDays = Array.from(new Set([...activeDays, today]))
+    }
+
+    tx.set(userRef, userUpdate, { merge: true })
+    tx.set(ledgerRef, { uid, lessonId, awarded: outcome.awarded, completed: lessonComplete, updatedAt: FieldValue.serverTimestamp() })
+
+    return { pointsDelta: outcome.pointsDelta, lessonComplete, totalPoints: newTotal, currentStreak, awarded: outcome.pointsDelta > 0 }
+  })
 })

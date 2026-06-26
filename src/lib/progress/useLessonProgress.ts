@@ -6,11 +6,12 @@ import {
   applyResult,
   advanceTo,
   emptyProgress,
+  getStepProgress,
   isLessonComplete,
   type LessonProgress,
 } from './model'
-import { commitStepRewards, loadLessonProgress, saveLessonProgress } from './store'
-import { isoDay } from './streak'
+import { loadLessonProgress, saveLessonProgress } from './store'
+import { recordStepCompletion } from './rewards'
 
 export interface RecordStepOutcome {
   /** Sparks awarded by this submission (0 if wrong or already completed). */
@@ -79,6 +80,8 @@ export function useLessonProgress(lesson: Lesson | null): UseLessonProgress {
       if (!user || !lesson) {
         return { pointsDelta: 0, justCompleted: false, lessonComplete: false }
       }
+      // Wrong attempts BEFORE this submission drive server-side points decay.
+      const prevWrongAttempts = getStepProgress(progressRef.current, step.id).wrongAttempts
       const { progress: next, pointsDelta, justCompleted } = applyResult(progressRef.current, {
         stepId: step.id,
         graded: step.graded,
@@ -91,21 +94,25 @@ export function useLessonProgress(lesson: Lesson | null): UseLessonProgress {
       progressRef.current = next
       setProgress(next)
       const lessonComplete = isLessonComplete(next, lesson)
+      // Gameplay/resume state is the learner's own (client-written). The Spark
+      // award is authoritative server-side: report the completion and let the
+      // Cloud Function compute + record the balance, then refresh the profile.
+      let awarded = pointsDelta
       try {
         await saveLessonProgress(db, user.uid, lesson.id, next)
         if (justCompleted) {
-          await commitStepRewards(db, user.uid, {
-            pointsDelta,
-            today: isoDay(),
+          const res = await recordStepCompletion({
             lessonId: lesson.id,
-            lessonComplete,
+            stepId: step.id,
+            wrongAttempts: prevWrongAttempts,
           })
+          awarded = res.pointsDelta
           await refreshProfile()
         }
       } catch (err) {
         console.warn('Failed to persist lesson progress', err)
       }
-      return { pointsDelta, justCompleted, lessonComplete }
+      return { pointsDelta: awarded, justCompleted, lessonComplete }
     },
     [user, lesson, refreshProfile],
   )
