@@ -10,15 +10,46 @@ service cloud.firestore {
       return isSignedIn() && request.auth.uid == userId;
     }
 
-    match /users/{userId} {
-      allow read, create, update: if isOwner(userId);
+    // Max Sparks a single client write may add to totalPoints. Points accrue one
+    // step at a time (base 100, never overridden), so this is generous headroom
+    // while blocking a one-shot balance forgery (e.g. setting totalPoints high
+    // enough to "buy" custom lessons for free). Spends are server-only (see
+    // below), so a client may never DECREASE the balance.
+    function pointsDeltaOk() {
+      let next = request.resource.data.totalPoints;
+      let prev = resource.data.totalPoints;
+      return next >= prev && next <= prev + 1000;
+    }
 
-      // Custom AI-generated lessons live under the owning user. Only the owner
-      // can read or write them. (In production the spend + write happen in the
-      // Callable Function via the Admin SDK, which bypasses these rules; this
-      // guards any client-side path.)
+    // The profile doc may only ever contain these fields, and the currency-ish
+    // aggregates must be non-negative ints. This stops junk-field injection and
+    // type confusion on the doc the AI economy trusts for balances.
+    function userShapeOk() {
+      return request.resource.data.keys().hasOnly(
+               ['displayName', 'email', 'totalPoints', 'currentStreak',
+                'lastActiveDate', 'completedLessons', 'activeDays', 'createdAt'])
+             && request.resource.data.totalPoints is int
+             && request.resource.data.totalPoints >= 0
+             && request.resource.data.currentStreak is int
+             && request.resource.data.currentStreak >= 0;
+    }
+
+    match /users/{userId} {
+      allow read: if isOwner(userId);
+      // Create starts the profile at zeroed aggregates; update is the only path
+      // the client uses to record earned points/streaks, so it must not let the
+      // balance be forged (server spends bypass rules via the Admin SDK).
+      allow create: if isOwner(userId) && userShapeOk();
+      allow update: if isOwner(userId) && userShapeOk() && pointsDeltaOk();
+
+      // Custom AI-generated lessons live under the owning user. They are READ by
+      // the owner but WRITTEN only by the Callable Function (Admin SDK, which
+      // bypasses these rules). Blocking client writes is what makes the 500-Spark
+      // charge unavoidable — a client cannot persist a lesson without the server
+      // deducting the cost first.
       match /aiLessons/{lessonId} {
-        allow read, write: if isOwner(userId);
+        allow read: if isOwner(userId);
+        allow write: if false;
       }
     }
 

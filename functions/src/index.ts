@@ -1,9 +1,10 @@
 import { onCall, HttpsError } from 'firebase-functions/v2/https'
 import { defineSecret } from 'firebase-functions/params'
 import { initializeApp } from 'firebase-admin/app'
-import { getFirestore } from 'firebase-admin/firestore'
+import { getFirestore, FieldValue } from 'firebase-admin/firestore'
 import OpenAI from 'openai'
-import { MAX_STEPS, buildRepairUserMessage, buildSystemPrompt, buildResponseSchema } from './lessonSpec.js'
+import { buildRepairUserMessage, buildSystemPrompt, buildResponseSchema } from './lessonSpec.js'
+import { validateLessonStructure, MAX_LESSON_JSON_BYTES } from './validateLesson.js'
 
 initializeApp()
 
@@ -11,10 +12,53 @@ const OPENAI_API_KEY = defineSecret('OPENAI_API_KEY')
 const MODEL = 'gpt-4o-mini'
 const CUSTOM_LESSON_COST = 500
 
+// Abuse controls for the (unpaid) generation endpoint. Generation costs real
+// OpenAI tokens, so an authenticated caller hitting the callable directly must
+// be bounded even though no Sparks are charged until commit.
+const MAX_GENERATIONS_PER_DAY = 40
+const MIN_GENERATION_INTERVAL_MS = 4_000
+// A repair pass replays the prior lesson; cap it so a caller can't inflate token
+// usage with a giant payload.
+const MAX_REPAIR_LESSON_BYTES = 100_000
+
 interface GenerateData {
   prompt?: string
   repair?: { lesson?: unknown; errors?: unknown }
   widgetMode?: 'standard' | 'simple'
+}
+
+/**
+ * Per-user rate limit for lesson generation, enforced in a transaction on a
+ * server-only doc (aiUsage/{uid}, not writable by clients). Throttles bursts and
+ * caps total daily generations so a single account can't drain OpenAI quota.
+ * Throws HttpsError('resource-exhausted', ...) when a limit is hit.
+ */
+async function enforceGenerationRateLimit(uid: string): Promise<void> {
+  const db = getFirestore()
+  const ref = db.doc(`aiUsage/${uid}`)
+  const now = Date.now()
+  const today = new Date(now).toISOString().slice(0, 10) // UTC YYYY-MM-DD
+  await db.runTransaction(async (tx) => {
+    const snap = await tx.get(ref)
+    const data = snap.data() ?? {}
+    const sameDay = data.day === today
+    const count = sameDay ? ((data.count as number) ?? 0) : 0
+    const lastAt = (data.lastAt as number) ?? 0
+
+    if (now - lastAt < MIN_GENERATION_INTERVAL_MS) {
+      throw new HttpsError(
+        'resource-exhausted',
+        'You are creating lessons too quickly. Please wait a moment and try again.',
+      )
+    }
+    if (count >= MAX_GENERATIONS_PER_DAY) {
+      throw new HttpsError(
+        'resource-exhausted',
+        'You have reached the daily limit for creating lessons. Please try again tomorrow.',
+      )
+    }
+    tx.set(ref, { day: today, count: count + 1, lastAt: now, updatedAt: FieldValue.serverTimestamp() })
+  })
 }
 
 // Stateless generation: produce lesson JSON (or a refusal). Charges nothing — the
@@ -36,6 +80,9 @@ export const generateCustomLesson = onCall(
       }
     }
 
+    // Throttle + daily cap per user before spending any OpenAI tokens.
+    await enforceGenerationRateLimit(req.auth.uid)
+
     const widgetMode = (req.data as GenerateData)?.widgetMode === 'simple' ? 'simple' : 'standard'
 
     const messages: { role: 'system' | 'user' | 'assistant'; content: string }[] = [
@@ -50,9 +97,13 @@ export const generateCustomLesson = onCall(
       ? (repair.errors as unknown[]).filter((e): e is string => typeof e === 'string')
       : []
     if (repair?.lesson && repairErrors.length > 0) {
+      const repairLessonJson = JSON.stringify({ accepted: true, lesson: repair.lesson })
+      if (repairLessonJson.length > MAX_REPAIR_LESSON_BYTES) {
+        throw new HttpsError('invalid-argument', 'The lesson to repair is too large.')
+      }
       messages.push({
         role: 'assistant',
-        content: JSON.stringify({ accepted: true, lesson: repair.lesson }),
+        content: repairLessonJson,
       })
       messages.push({
         role: 'user',
@@ -136,17 +187,26 @@ export const commitCustomLesson = onCall({ enforceAppCheck: true }, async (req) 
   const lessonJson = String(data?.lessonJson ?? '')
   const prompt = String(data?.prompt ?? '')
 
+  if (Buffer.byteLength(lessonJson, 'utf8') > MAX_LESSON_JSON_BYTES) {
+    throw new HttpsError('invalid-argument', 'Lesson is too large to save.')
+  }
+
   let lesson: { title?: unknown; steps?: unknown }
   try {
     lesson = JSON.parse(lessonJson)
   } catch {
     throw new HttpsError('invalid-argument', 'Lesson JSON is malformed.')
   }
-  if (typeof lesson.title !== 'string' || !Array.isArray(lesson.steps)) {
-    throw new HttpsError('invalid-argument', 'Lesson is missing a title or steps.')
-  }
-  if (lesson.steps.length < 1 || lesson.steps.length > MAX_STEPS) {
-    throw new HttpsError('invalid-argument', `Lessons must have 1-${MAX_STEPS} steps.`)
+
+  // Re-run the same structural gate as the client before charging Sparks: a
+  // caller hitting this callable directly must not be able to pay for — and
+  // store — a malformed or ungradable lesson.
+  const validation = validateLessonStructure(lesson)
+  if (!validation.ok) {
+    throw new HttpsError(
+      'invalid-argument',
+      `Lesson failed validation: ${validation.errors.slice(0, 5).join('; ')}`,
+    )
   }
 
   const db = getFirestore()
