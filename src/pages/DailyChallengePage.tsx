@@ -33,6 +33,28 @@ function conceptLabel(concept: string): string {
   return concept.charAt(0).toUpperCase() + concept.slice(1)
 }
 
+// Client-side same-day lock. The server marker (users/{uid}/daily/{day}) is the
+// authoritative, cross-device record, but it only exists if the commit persisted.
+// This per-device flag guarantees a finished challenge can't be replayed today
+// even if the commit was flaky — "once a day" holds regardless of the backend.
+function dailyDoneKey(uid: string, day: string): string {
+  return `pyxel:dailyDone:${uid}:${day}`
+}
+function readDailyDoneFlag(uid: string, day: string): boolean {
+  try {
+    return typeof localStorage !== 'undefined' && localStorage.getItem(dailyDoneKey(uid, day)) === '1'
+  } catch {
+    return false
+  }
+}
+function writeDailyDoneFlag(uid: string, day: string): void {
+  try {
+    if (typeof localStorage !== 'undefined') localStorage.setItem(dailyDoneKey(uid, day), '1')
+  } catch {
+    // Storage disabled (e.g. private mode) — the server marker still gates.
+  }
+}
+
 function DailyHeader() {
   return (
     <header className="daily-header">
@@ -76,6 +98,13 @@ export function DailyChallengePage() {
       if (cancelled) return
       if (record) {
         setTodayRecord(record)
+        setStatus('already-done')
+        initializedRef.current = true
+        return
+      }
+      // Fallback: a finished-today flag on this device locks replay even when the
+      // server marker is absent (e.g. the commit didn't persist).
+      if (readDailyDoneFlag(user.uid, today)) {
         setStatus('already-done')
         initializedRef.current = true
         return
@@ -134,6 +163,9 @@ export function DailyChallengePage() {
   function finish(finalResults: DailyResultInput[]) {
     if (committedRef.current) return
     committedRef.current = true
+    // Lock today's challenge on this device the moment it's finished, before the
+    // (possibly flaky) server commit — so it can't be replayed even if commit fails.
+    if (user) writeDailyDoneFlag(user.uid, today)
     const strengthened = [...new Set(finalResults.filter((r) => r.correct).map((r) => r.concept))]
     setSubmitting(true)
     commitDailyChallenge(today, finalResults)

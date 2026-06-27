@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest'
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { DailyChallengePage } from '../../src/pages/DailyChallengePage'
@@ -6,6 +6,7 @@ import { makeAuthValue, makeUser, renderWithAuth } from '../helpers/renderWithAu
 import type { UserProfile } from '../../src/lib/users'
 import * as store from '../../src/lib/daily/store'
 import * as commit from '../../src/lib/daily/commit'
+import { isoDay } from '../../src/lib/progress/streak'
 
 // Server-owned reads are mocked; the page is pure UI over them.
 vi.mock('../../src/lib/daily/store', () => ({
@@ -64,9 +65,26 @@ function renderPage(profile: UserProfile = makeProfile()) {
 describe('[Phase 12] DailyChallengePage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    // Fresh in-memory localStorage per test (the jsdom stub here lacks a usable
+    // Storage), so the device-level same-day lock is exercised in isolation.
+    const mem = new Map<string, string>()
+    vi.stubGlobal('localStorage', {
+      getItem: (k: string) => (mem.has(k) ? (mem.get(k) as string) : null),
+      setItem: (k: string, v: string) => void mem.set(k, String(v)),
+      removeItem: (k: string) => void mem.delete(k),
+      clear: () => mem.clear(),
+      key: (i: number) => [...mem.keys()][i] ?? null,
+      get length() {
+        return mem.size
+      },
+    })
     vi.mocked(store.loadConcepts).mockResolvedValue({})
     vi.mocked(store.loadTodayChallenge).mockResolvedValue(null)
     vi.mocked(commit.commitDailyChallenge).mockResolvedValue({ awarded: true, sparksDelta: 50, totalPoints: 50 })
+  })
+
+  afterEach(() => {
+    vi.unstubAllGlobals()
   })
 
   it('renders the first due question', async () => {
@@ -102,5 +120,29 @@ describe('[Phase 12] DailyChallengePage', () => {
     expect(typeof day).toBe('string')
     expect(results).toHaveLength(1)
     expect(results[0]).toMatchObject({ concept: 'print', correct: true })
+  })
+
+  it('locks replay on this device once finished, even without a server marker', async () => {
+    localStorage.setItem(`pyxel:dailyDone:test-uid:${isoDay()}`, '1')
+    renderPage()
+    expect(await screen.findByText(/done for today/i)).toBeInTheDocument()
+    expect(screen.queryByText('What does print do?')).not.toBeInTheDocument()
+    expect(commit.commitDailyChallenge).not.toHaveBeenCalled()
+  })
+
+  it('sets the same-day device lock after finishing, blocking replay today', async () => {
+    const user = userEvent.setup()
+    const { unmount } = renderPage()
+    await user.click(await screen.findByLabelText('Shows text'))
+    await user.click(screen.getByRole('button', { name: /check/i }))
+    await user.click(screen.getByRole('button', { name: /finish/i }))
+    expect(await screen.findByText(/daily challenge complete/i)).toBeInTheDocument()
+
+    expect(localStorage.getItem(`pyxel:dailyDone:test-uid:${isoDay()}`)).toBe('1')
+
+    // A fresh visit today now shows "done" even though the server marker is null.
+    unmount()
+    renderPage()
+    expect(await screen.findByText(/done for today/i)).toBeInTheDocument()
   })
 })
