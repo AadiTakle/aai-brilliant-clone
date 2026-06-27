@@ -40,6 +40,9 @@ export interface GeneratedApplyQuestion {
   prompt: string
   starterCode?: string
   requiredConstructs?: ('loop' | 'modulo' | 'conditional')[]
+  disallowedNames?: string[]
+  requiredNames?: string[]
+  forbidHardcodedOutput?: boolean
   testCases: { stdin?: string; expectedStdout: string; feedback?: string }[]
   referenceSolution: string
   concepts?: MasteryConcept[]
@@ -97,6 +100,9 @@ async function acceptQuestion(
       feedback: tc.feedback,
     })),
     requiredConstructs: q.requiredConstructs ?? [],
+    disallowedNames: q.disallowedNames ?? [],
+    requiredNames: q.requiredNames ?? [],
+    forbidHardcodedOutput: q.forbidHardcodedOutput ?? false,
     concepts: q.concepts ?? [],
   })
   if (!parsed.success) {
@@ -112,18 +118,28 @@ async function acceptQuestion(
   const ref = String(q.referenceSolution ?? '')
   if (!ref.trim()) return { ok: false, reason: 'missing referenceSolution' }
 
-  // Self-test: the model's own solution must pass its own tests AND satisfy the
-  // required constructs. This catches questions whose expected output is wrong or
-  // whose construct demand is impossible.
+  // Self-test: the model's own solution must pass its own tests AND satisfy every
+  // constraint it imposed (constructs, required/disallowed names, no hardcoding).
+  // This catches questions whose expected output is wrong, whose construct demand
+  // is impossible, or whose constraints contradict the only valid solution.
   const grade = await gradePython(ref, question.testCases, runner, {
     requiredConstructs: question.requiredConstructs,
+    disallowedNames: question.disallowedNames,
+    requiredNames: question.requiredNames,
+    forbidHardcodedOutput: question.forbidHardcodedOutput,
   })
   if (!grade.passed) {
     const failedCase = grade.results.findIndex((r) => !r.passed)
     const why =
       grade.missingConstructs.length > 0
         ? `reference missing constructs: ${grade.missingConstructs.join(', ')}`
-        : `reference failed its own test case #${failedCase + 1}`
+        : grade.disallowedUsed.length > 0
+          ? `reference uses disallowed names: ${grade.disallowedUsed.join(', ')}`
+          : grade.requiredMissing.length > 0
+            ? `reference missing required names: ${grade.requiredMissing.join(', ')}`
+            : grade.hardcodedOutput
+              ? 'reference hardcodes the expected output'
+              : `reference failed its own test case #${failedCase + 1}`
     return { ok: false, reason: `self-test: ${why}` }
   }
 

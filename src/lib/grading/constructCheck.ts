@@ -42,6 +42,73 @@ const SOURCE_DETECTORS: Record<Construct, (source: string) => boolean> = {
   conditional: usesConditionalSource,
 }
 
+function escapeRegExp(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+}
+
+/**
+ * Does `source` reference `name` as a standalone identifier/keyword? Strings and
+ * comments are stripped first, and the match excludes attribute access (so
+ * `obj.sum` does not count as `sum`) and longer identifiers (`mysum`). Used for
+ * both the disallowed and required name checks.
+ */
+export function usesNameSource(source: string, name: string): boolean {
+  const trimmed = name.trim()
+  if (!trimmed) return false
+  const stripped = stripStringsAndComments(source)
+  const re = new RegExp(`(?:^|[^\\w.])${escapeRegExp(trimmed)}(?![\\w])`)
+  return re.test(stripped)
+}
+
+/** Banned identifiers that nonetheless appear in the source. */
+export function findDisallowedNames(source: string, disallowed: string[]): string[] {
+  return disallowed.filter((n) => n.trim() && usesNameSource(source, n))
+}
+
+/** Required identifiers that are missing from the source. */
+export function findMissingRequiredNames(source: string, required: string[]): string[] {
+  return required.filter((n) => n.trim() && !usesNameSource(source, n))
+}
+
+/**
+ * Heuristic anti-hardcoding check: is any line of `expectedStdout` printed as a
+ * bare literal — print(30) / print("READY") / print('30') — rather than computed?
+ * Runs on the raw source (not stripped) so quoted answers are caught too.
+ */
+export function printsLiteralOutput(source: string, expectedStdout: string): boolean {
+  const lines = expectedStdout
+    .split('\n')
+    .map((l) => l.trim())
+    .filter((l) => l.length > 0)
+  if (lines.length === 0) return false
+  return lines.some((line) => {
+    const esc = escapeRegExp(line)
+    // print( "line" | 'line' | line )  — the exact answer typed in directly.
+    const re = new RegExp(`print\\s*\\(\\s*(["']?)${esc}\\1\\s*\\)`)
+    return re.test(source)
+  })
+}
+
+/** A short, answer-free nudge for a failed extra constraint (name/hardcode). */
+export function extraConstraintHint(opts: {
+  disallowedUsed?: string[]
+  requiredMissing?: string[]
+  hardcodedOutput?: boolean
+}): string {
+  if (opts.hardcodedOutput) {
+    return 'Right output, but compute it in code — print a variable you calculated, not the answer typed in directly.'
+  }
+  const disallowed = opts.disallowedUsed ?? []
+  if (disallowed.length > 0) {
+    return `This one doesn't allow ${disallowed.join(', ')} — solve it a different way.`
+  }
+  const missing = opts.requiredMissing ?? []
+  if (missing.length > 0) {
+    return `Use ${missing.join(', ')} in your solution.`
+  }
+  return ''
+}
+
 /**
  * Combine the legacy `requireLoop` flag with an explicit `requiredConstructs`
  * list into a de-duplicated set.

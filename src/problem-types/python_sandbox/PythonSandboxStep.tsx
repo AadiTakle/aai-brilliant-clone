@@ -5,7 +5,7 @@ import type { StepRenderProps } from '../types'
 import type { PythonSandboxConfig } from './schema'
 import { runPython } from '../../lib/pyodide/runner'
 import { gradePython, isPythonGraded, type PythonGradeResult } from '../../lib/grading/pythonGrader'
-import { constructHint } from '../../lib/grading/constructCheck'
+import { constructHint, extraConstraintHint } from '../../lib/grading/constructCheck'
 import { diagnose } from '../../lib/grading/diagnostics'
 import { useResolvedTheme } from '../../theme/useResolvedTheme'
 
@@ -66,6 +66,9 @@ export function PythonSandboxBody({ title, config, onComplete, onGraded }: BodyP
           requireLoop: config.requireLoop,
           requiredConstructs: config.requiredConstructs,
           lenient: config.lenient,
+          disallowedNames: config.disallowedNames,
+          requiredNames: config.requiredNames,
+          forbidHardcodedOutput: config.forbidHardcodedOutput,
         })
         setGrade(result)
         onGraded?.({ correct: result.passed })
@@ -194,7 +197,15 @@ export function PythonSandboxBody({ title, config, onComplete, onGraded }: BodyP
               ? config.successMessage ?? 'All tests passed!'
               : grade.missingConstructs.length > 0
                 ? constructHint(grade.missingConstructs)
-                : 'Some tests failed — tweak your code and run again.'}
+                : grade.disallowedUsed.length > 0 ||
+                    grade.requiredMissing.length > 0 ||
+                    grade.hardcodedOutput
+                  ? extraConstraintHint({
+                      disallowedUsed: grade.disallowedUsed,
+                      requiredMissing: grade.requiredMissing,
+                      hardcodedOutput: grade.hardcodedOutput,
+                    })
+                  : 'Some tests failed — tweak your code and run again.'}
           </p>
         </div>
       )}

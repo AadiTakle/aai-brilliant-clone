@@ -35,6 +35,11 @@ SCOPE — teach almost any SINGLE topic:
 
 GRADING — every problem that CAN be graded MUST be graded, with real criteria AND failure hints (match the quality of the built-in lessons):
 - Every "python_sandbox" step MUST set "graded": true and include at least one test case in "testCases". EVERY test case MUST include a "feedback" string that nudges the learner toward the fix WITHOUT revealing the answer. When the task is about a construct, also set "requiredConstructs" (any of "loop", "modulo", "conditional") or "requireLoop": true so a hardcoded output cannot pass. Only ask for output the learner can actually produce.
+- EXTRA CONSTRAINTS (optional — use them to stop shortcuts and force real practice, but only when a valid beginner solution still clearly exists):
+  • "forbidHardcodedOutput": true — the answer must be COMPUTED, not typed in. A solution that prints the expected output as a literal (print(30), print("READY")) fails. Use this whenever the point is to calculate/derive a value, and make the prompt say "compute" / "store it in a variable and print that".
+  • "requiredNames": [..] — identifiers the solution MUST use, e.g. ["total"] to require a named variable, or ["def"] to require defining a function. State the required name in the prompt.
+  • "disallowedNames": [..] — functions/keywords the solution may NOT use, e.g. ["sum"] to make them add with a loop, or ["while"], ["import"]. State the restriction in the prompt.
+  These are matched as standalone tokens in code (strings/comments are ignored). Never set a constraint that makes the task impossible, and never disallow something you also require.
 - Every "parsons_problem" MUST include an "orderHint" (shown when the order is wrong) and, when indentation is graded (the default), an "indentHint" — both answer-free.
 - Every checkpoint MUST include "feedback" as an OBJECT with BOTH keys "correct" and "incorrect" — each a non-empty string. This is the #1 validation failure; never omit it, never use a plain string for feedback.
 
@@ -192,7 +197,7 @@ Return "accepted": true plus a "lesson". Allowed step "type" values:
      - code_tracer: { "code": [lines], "steps": [{ "line": 0-based index into code, "vars"?: {name: value}, "output"? }] }  // step through an authored trace of a small program
    For trace/code_tracer widgets you MUST author a correct, runnable trace: "line" is a 0-based index into "code", "vars" reflects values AFTER that line runs, and "output" is exactly what that line prints. Get every step right.
 
-2) "python_sandbox" (set "graded": true). config: { "prompt", "starterCode"?, "successMessage"?, "lenient"?: boolean, "requireLoop"?: boolean, "requiredConstructs"?: ["loop"|"modulo"|"conditional"], "testCases": [{ "stdin"?, "expectedStdout", "feedback" }] }. See the GRADING rules above — feedback on every test case is REQUIRED.
+2) "python_sandbox" (set "graded": true). config: { "prompt", "starterCode"?, "successMessage"?, "lenient"?: boolean, "requireLoop"?: boolean, "requiredConstructs"?: ["loop"|"modulo"|"conditional"], "disallowedNames"?: [string], "requiredNames"?: [string], "forbidHardcodedOutput"?: boolean, "testCases": [{ "stdin"?, "expectedStdout", "feedback" }] }. See the GRADING rules above — feedback on every test case is REQUIRED, and the EXTRA CONSTRAINTS are optional anti-shortcut guards.
 
 3) "parsons_problem" (set "graded": true). config: { "prompt", "lines": [{ "id", "code", "indent": 0-based level }] in the CORRECT order, "distractors"?: [{ "id", "code", "indent" }], "checkIndent"?: boolean, "orderHint", "indentHint" }. The "lines" must form a runnable Python solution WITHOUT calling input() — use literal values only. Indented lines (inside a for/if/def) use indent 1, 2, ... orderHint is REQUIRED; indentHint is REQUIRED whenever indentation is graded.
 
@@ -486,6 +491,9 @@ export function buildResponseSchema(mode: WidgetMode = 'standard') {
             type: 'array',
             items: { type: 'string', enum: ['loop', 'modulo', 'conditional'] },
           },
+          disallowedNames: { type: 'array', items: { type: 'string' } },
+          requiredNames: { type: 'array', items: { type: 'string' } },
+          forbidHardcodedOutput: { type: 'boolean' },
           testCases: { type: 'array', items: testCase, minItems: 1 },
         },
         required: ['prompt', 'testCases'],

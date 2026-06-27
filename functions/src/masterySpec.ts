@@ -30,7 +30,11 @@ RULES:
 - Output the learner can actually produce deterministically (no randomness, no current date/time).
 - Every question MUST include at least one test case. Every test case MUST have an "expectedStdout" and a "feedback" string that nudges toward the fix WITHOUT revealing the answer.
 - When a concept implies a construct, set "requiredConstructs" (any of "loop", "modulo", "conditional") so a hardcoded answer cannot pass.
-- Every question MUST include a correct "referenceSolution": runnable Python that, when executed, prints EXACTLY each test case's expectedStdout AND genuinely uses every requiredConstruct. This is self-tested; if your reference solution does not pass, the question is thrown away.
+- OPTIONAL anti-shortcut constraints — use them to make the challenge real, but only when a valid beginner solution still exists, and never disallow something you also require:
+  • "forbidHardcodedOutput": true — the answer must be computed, not printed as a literal (print(30) / print("READY") fail). Use when the point is to calculate a value.
+  • "requiredNames": [..] — identifiers the solution MUST use (e.g. ["total"] for a named variable, ["def"] to require a function).
+  • "disallowedNames": [..] — functions/keywords the solution may NOT use (e.g. ["sum"], ["while"], ["import"]).
+- Every question MUST include a correct "referenceSolution": runnable Python that, when executed, prints EXACTLY each test case's expectedStdout, genuinely uses every requiredConstruct, AND obeys every extra constraint (computes the answer, uses each requiredName, avoids each disallowedName). This is self-tested against ALL of those; if your reference solution does not pass, the question is thrown away.
 - Keep "starterCode" minimal (a comment and any given setup line) — never include the answer.
 
 Set "accepted": false with a short kind "reason" only if you genuinely cannot make a valid beginner question for the given concepts. Otherwise return "accepted": true and the "questions" array. Output JSON ONLY.`
@@ -63,6 +67,9 @@ export function buildMasteryResponseSchema() {
         type: 'array',
         items: { type: 'string', enum: ['loop', 'modulo', 'conditional'] },
       },
+      disallowedNames: { type: 'array', items: STR },
+      requiredNames: { type: 'array', items: STR },
+      forbidHardcodedOutput: { type: 'boolean' },
       testCases: { type: 'array', items: testCase, minItems: 1 },
       referenceSolution: STR,
       concepts: { type: 'array', items: STR },

@@ -23,6 +23,10 @@ export const l9FizzBuzzPop = {
           },
           {
             text:
+              "**Here are the rules.** Go through the numbers **1 to 21**. For each number:\n\n- a multiple of **3** → say **Fizz**\n- a multiple of **5** → say **Buzz**\n- a multiple of **7** → say **Pop**\n\nIf a number matches more than one rule, join the words **in that order** — so **15** (3 and 5) is **FizzBuzz**, and **21** (3 and 7) is **FizzPop**. If it matches **no** rule, just print the **number itself**.",
+          },
+          {
+            text:
               "There's no warm-up here. Press **Finish** to enter the **Mastery Challenge**: first a quick review of the ideas you'll need, then you write the whole program yourself — from a nearly blank screen.",
           },
         ],

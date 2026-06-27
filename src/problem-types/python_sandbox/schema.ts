@@ -16,6 +16,18 @@ export const pythonSandboxConfigSchema = z.object({
   requireLoop: z.boolean().default(false),
   // A passing solution must actually use each listed construct.
   requiredConstructs: z.array(z.enum(['loop', 'modulo', 'conditional'])).default([]),
+  // Identifiers (functions, keywords, or builtins) a passing solution may NOT use,
+  // e.g. ["sum", "while", "import"]. Matched as standalone tokens in code (string
+  // literals and comments are ignored). Lets a problem forbid a shortcut.
+  disallowedNames: z.array(z.string()).default([]),
+  // Identifiers a passing solution MUST reference, e.g. a required variable name
+  // ["total"]. Matched the same way as disallowedNames.
+  requiredNames: z.array(z.string()).default([]),
+  // When true, the answer must be COMPUTED, not printed as a literal: a solution
+  // that prints a test case's expected output verbatim (e.g. print(30) or
+  // print("READY")) fails even if the output matches. Forces "print the variable,
+  // not the answer".
+  forbidHardcodedOutput: z.boolean().default(false),
   // Opt-in "close enough" grading: ignores case, surrounding whitespace, and
   // trailing punctuation. Off by default so later lessons stay strict.
   lenient: z.boolean().default(false),
