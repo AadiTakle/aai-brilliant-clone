@@ -41,18 +41,25 @@ export function CheckpointResults({
     // StrictMode's double-invoke safe, and the callable is idempotent server-side.
     if (!result.passed || ranRef.current) return
     ranRef.current = true
-    commitCheckpoint(spec.id, true)
-      .then((res) => {
+    async function awardAndRefresh() {
+      try {
+        const res = await commitCheckpoint(spec.id, true)
         setSparks(res.sparksDelta ?? 0)
-        // Background-refresh the cached profile (new balance + passed set); the
-        // Continue button must not block on it.
-        refreshProfile().catch(() => {})
-      })
-      .catch(() => {
+      } catch {
         // The award is idempotent + server-owned; even on a transient error the
         // learner shouldn't be trapped, so still let them continue.
         setSparks(0)
-      })
+      } finally {
+        // Refresh the cached profile so passedCheckpoints — which opens the next
+        // lesson's gate — is current before the learner returns to the map
+        // (mirrors useLessonProgress after recordStepCompletion). This runs even
+        // when the commit call rejected (e.g. the write landed server-side but the
+        // response was lost), so a passed checkpoint never stays gated until a
+        // hard reload. The Continue button never blocks on it.
+        await refreshProfile().catch(() => {})
+      }
+    }
+    void awardAndRefresh()
   }, [result.passed, spec.id, refreshProfile])
 
   const failedConcepts = result.concepts.filter((c) => !c.passed).map((c) => c.concept)
