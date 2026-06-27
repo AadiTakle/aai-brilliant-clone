@@ -19,6 +19,14 @@ import {
   type RewardLedger,
   type StreakState,
 } from './rewards.js'
+import {
+  emptyConcept,
+  updateConcept,
+  dailyAward,
+  MAX_DAILY_RESULTS,
+  type ConceptMastery,
+  type DailyResult,
+} from './dailySchedule.js'
 
 initializeApp()
 
@@ -516,5 +524,106 @@ export const commitMasteryCompletion = onCall(async (req) => {
       currentStreak: nextStreak.currentStreak,
       awarded: sparks > 0,
     }
+  })
+})
+
+interface DailyCommitData {
+  day?: unknown
+  results?: unknown
+}
+
+// Server-authoritative Daily Challenge completion. The client reports the day's
+// per-concept results; the server updates each concept's spaced-repetition record
+// (server updateConcept — speed never lowers strength, never affects Sparks),
+// grants ACCURACY-ONLY Sparks at a modest rate, advances the streak, and writes a
+// one-per-day marker so the award is idempotent. Mirrors recordStepCompletion's
+// trust model: App Check is not enforced so core practice keeps working, and abuse
+// is bounded because each day pays out at most once.
+export const commitDailyChallenge = onCall(async (req) => {
+  if (!req.auth) {
+    throw new HttpsError('unauthenticated', 'Sign in to do the daily challenge.')
+  }
+  const uid = req.auth.uid
+  const data = req.data as DailyCommitData
+  const day = String(data?.day ?? '')
+  // The marker/day must match the local day the client schedules against, so it
+  // is trusted as-is but validated to a strict YYYY-MM-DD shape.
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(day)) {
+    throw new HttpsError('invalid-argument', 'A valid day (YYYY-MM-DD) is required.')
+  }
+
+  // Keep only well-typed entries and cap the count (anti-forge: a day's set is ~5).
+  const rawResults = Array.isArray(data?.results) ? (data.results as unknown[]) : []
+  const results: DailyResult[] = rawResults
+    .filter((r): r is Record<string, unknown> => typeof r === 'object' && r !== null)
+    .map((r) => ({
+      concept: String(r.concept ?? ''),
+      correct: Boolean(r.correct),
+      fast: Boolean(r.fast),
+    }))
+    .filter((r) => r.concept.length > 0 && r.concept.length <= 40)
+    .slice(0, MAX_DAILY_RESULTS)
+
+  const db = getFirestore()
+  const userRef = db.doc(`users/${uid}`)
+  const dayRef = db.doc(`users/${uid}/daily/${day}`)
+  const concepts = Array.from(new Set(results.map((r) => r.concept)))
+  const conceptRefs = concepts.map((c) => db.doc(`users/${uid}/concepts/${c}`))
+
+  return await db.runTransaction(async (tx) => {
+    // All reads before any writes (Firestore transaction rule).
+    const [userSnap, daySnap, ...conceptSnaps] = await Promise.all([
+      tx.get(userRef),
+      tx.get(dayRef),
+      ...conceptRefs.map((ref) => tx.get(ref)),
+    ])
+
+    const u = userSnap.data() ?? {}
+    const currentTotal = (u.totalPoints as number) ?? 0
+    const currentStreak = (u.currentStreak as number) ?? 0
+
+    // Idempotent: today's challenge pays out at most once.
+    const award = dailyAward(daySnap.exists, results)
+    if (!award.awarded) {
+      return { awarded: false, sparksDelta: 0, totalPoints: currentTotal, currentStreak }
+    }
+
+    // Fold each result into its concept record (multiple results for one concept
+    // apply in order), defaulting an unseen concept to emptyConcept(day).
+    const conceptState = new Map<string, ConceptMastery>()
+    concepts.forEach((c, i) => {
+      const snap = conceptSnaps[i]
+      conceptState.set(c, snap.exists ? (snap.data() as ConceptMastery) : emptyConcept(day))
+    })
+    for (const r of results) {
+      const prev = conceptState.get(r.concept) ?? emptyConcept(day)
+      conceptState.set(r.concept, updateConcept(prev, { correct: r.correct, fast: r.fast }, day))
+    }
+    for (const c of concepts) {
+      tx.set(db.doc(`users/${uid}/concepts/${c}`), conceptState.get(c) as ConceptMastery)
+    }
+
+    const correctCount = results.filter((r) => r.correct).length
+    const sparks = award.sparks // accuracy-only; `fast` deliberately ignored
+    const newTotal = currentTotal + sparks
+
+    // Daily activity advances the streak with the same grace rules, keyed on the
+    // local day the challenge counts for.
+    const nextStreak = updateStreak({ currentStreak, lastActiveDate: (u.lastActiveDate as string | null) ?? null }, day)
+    const activeDays: string[] = Array.isArray(u.activeDays) ? (u.activeDays as string[]) : []
+
+    tx.set(
+      userRef,
+      {
+        totalPoints: newTotal,
+        currentStreak: nextStreak.currentStreak,
+        lastActiveDate: nextStreak.lastActiveDate,
+        activeDays: Array.from(new Set([...activeDays, day])),
+      },
+      { merge: true },
+    )
+    tx.set(dayRef, { correctCount, sparks, updatedAt: FieldValue.serverTimestamp() })
+
+    return { awarded: true, sparksDelta: sparks, totalPoints: newTotal, currentStreak: nextStreak.currentStreak }
   })
 })
