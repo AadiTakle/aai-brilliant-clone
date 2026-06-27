@@ -3,10 +3,9 @@ import { Link } from 'react-router-dom'
 import { db } from '../firebase/config'
 import { useAuth } from '../auth/useAuth'
 import { isoDay } from '../lib/progress/streak'
-import { MASTERY_CONCEPTS } from '../content/mastery'
 import type { MasteryConcept, MasteryRecallQuestion } from '../content/mastery'
 import { recallItemsForConcept, sampleN, shuffle } from '../lib/checkpoints/itemBank'
-import { AFK_MS, FAST_MS, selectDailyConcepts } from '../lib/daily/schedule'
+import { AFK_MS, FAST_MS, learnedConcepts, selectDailyConcepts } from '../lib/daily/schedule'
 import { loadConcepts, loadTodayChallenge } from '../lib/daily/store'
 import type { DailyChallengeRecord } from '../lib/daily/store'
 import { commitDailyChallenge } from '../lib/daily/commit'
@@ -44,7 +43,7 @@ function DailyHeader() {
 }
 
 export function DailyChallengePage() {
-  const { user, refreshProfile } = useAuth()
+  const { user, profile, refreshProfile } = useAuth()
   const today = useMemo(() => isoDay(), [])
 
   const [status, setStatus] = useState<Status>('loading')
@@ -60,8 +59,13 @@ export function DailyChallengePage() {
   const startRef = useRef(0)
   const recordedRef = useRef<Record<number, boolean>>({})
   const committedRef = useRef(false)
+  // The day's set is built exactly once. The guard keeps the post-finish profile
+  // refresh (which lands in this effect's deps) from re-reading the now-committed
+  // day and clobbering the results screen with the "already done" state.
+  const initializedRef = useRef(false)
 
   useEffect(() => {
+    if (initializedRef.current) return
     let cancelled = false
     async function load() {
       if (!user) return
@@ -73,9 +77,21 @@ export function DailyChallengePage() {
       if (record) {
         setTodayRecord(record)
         setStatus('already-done')
+        initializedRef.current = true
         return
       }
-      const concepts = selectDailyConcepts(store, [...MASTERY_CONCEPTS], today, DAILY_COUNT)
+      // Only quiz concepts the learner has actually been taught: the union of
+      // mastery recall concepts across the lessons they've completed or mastered.
+      const learned = learnedConcepts([
+        ...(profile?.completedLessons ?? []),
+        ...(profile?.masteredLessons ?? []),
+      ])
+      if (learned.length === 0) {
+        // Nothing learned yet — a friendly nudge beats an empty/invalid challenge.
+        setStatus('empty')
+        return
+      }
+      const concepts = selectDailyConcepts(store, learned, today, DAILY_COUNT)
       const drawn: DailyItem[] = []
       for (const concept of concepts) {
         for (const question of sampleN(recallItemsForConcept(concept), 1)) {
@@ -91,12 +107,13 @@ export function DailyChallengePage() {
       setItems(built)
       startRef.current = performance.now()
       setStatus('running')
+      initializedRef.current = true
     }
     load()
     return () => {
       cancelled = true
     }
-  }, [user, today])
+  }, [user, today, profile])
 
   const current = items[index]
   const isLast = index + 1 >= items.length
@@ -183,7 +200,8 @@ export function DailyChallengePage() {
         <section className="daily-card">
           <h2>Nothing to review yet</h2>
           <p className="daily-note">
-            Complete a lesson or two and your Daily Challenge will fill up.
+            Complete a lesson first to unlock daily practice — then come back to review
+            what you’ve learned.
           </p>
           <Link to="/?view=map" className="btn-machine">
             Back to course

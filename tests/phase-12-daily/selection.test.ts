@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { selectDailyConcepts } from '../../src/lib/daily/schedule'
+import { learnedConcepts, selectDailyConcepts } from '../../src/lib/daily/schedule'
 import { emptyConcept, type ConceptMastery } from '../../src/lib/daily/types'
 import { MASTERY_CONCEPTS, type MasteryConcept } from '../../src/content/mastery'
 
@@ -35,5 +35,28 @@ describe('[Phase 12] selectDailyConcepts', () => {
       // `loop` is unseen.
     }
     expect(selectDailyConcepts(store, all, today, 1)).toEqual(['loop'])
+  })
+})
+
+describe('[Phase 12] learnedConcepts', () => {
+  it('returns nothing when no lessons have been cleared', () => {
+    expect(learnedConcepts([])).toEqual([])
+  })
+
+  it('unions the mastery recall concepts of the cleared lessons only', () => {
+    // L1-L3 teach the cp-foundations pool (print/variable/modulo); loops and
+    // conditionals are not taught until L5/L6, so they must not appear.
+    const learned = learnedConcepts([
+      'l1-talking-to-the-computer',
+      'l2-boxes-that-remember',
+      'l3-doing-the-math',
+    ])
+    expect(learned).toEqual(expect.arrayContaining(['print', 'variable', 'modulo']))
+    expect(learned).not.toContain('loop')
+    expect(learned).not.toContain('conditional')
+  })
+
+  it('ignores unknown lesson ids (custom AI lessons have no mastery spec)', () => {
+    expect(learnedConcepts(['does-not-exist'])).toEqual([])
   })
 })

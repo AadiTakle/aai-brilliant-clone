@@ -3,6 +3,7 @@ import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { DailyChallengePage } from '../../src/pages/DailyChallengePage'
 import { makeAuthValue, makeUser, renderWithAuth } from '../helpers/renderWithAuth'
+import type { UserProfile } from '../../src/lib/users'
 import * as store from '../../src/lib/daily/store'
 import * as commit from '../../src/lib/daily/commit'
 
@@ -35,9 +36,27 @@ vi.mock('../../src/lib/checkpoints/itemBank', async (importOriginal) => {
   }
 })
 
-function renderPage() {
+// The Daily Challenge only draws concepts the learner has been taught, so a
+// profile that has cleared L1 (which teaches `print`) keeps the deterministic
+// `print`-only run below working.
+function makeProfile(overrides: Partial<UserProfile> = {}): UserProfile {
+  return {
+    displayName: 'Ada',
+    email: 'ada@example.com',
+    totalPoints: 0,
+    currentStreak: 0,
+    lastActiveDate: null,
+    completedLessons: ['l1-talking-to-the-computer'],
+    masteredLessons: [],
+    passedCheckpoints: [],
+    activeDays: [],
+    ...overrides,
+  }
+}
+
+function renderPage(profile: UserProfile = makeProfile()) {
   return renderWithAuth(<DailyChallengePage />, {
-    authValue: makeAuthValue({ user: makeUser('Ada') }),
+    authValue: makeAuthValue({ user: makeUser('Ada'), profile }),
     initialEntries: ['/daily'],
   })
 }
@@ -53,6 +72,12 @@ describe('[Phase 12] DailyChallengePage', () => {
   it('renders the first due question', async () => {
     renderPage()
     expect(await screen.findByText('What does print do?')).toBeInTheDocument()
+    expect(commit.commitDailyChallenge).not.toHaveBeenCalled()
+  })
+
+  it('shows a friendly empty state when the learner has not learned anything yet', async () => {
+    renderPage(makeProfile({ completedLessons: [], masteredLessons: [] }))
+    expect(await screen.findByText(/complete a lesson first/i)).toBeInTheDocument()
     expect(commit.commitDailyChallenge).not.toHaveBeenCalled()
   })
 

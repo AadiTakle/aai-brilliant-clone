@@ -8,7 +8,7 @@
 // overshooting hurts far less than undershooting), with missed items resurfacing
 // the next day.
 
-import type { MasteryConcept } from '../../content/mastery'
+import { getMasteryChallenge, type MasteryConcept } from '../../content/mastery'
 import type { ConceptMastery } from './types'
 import { addDays, dayDiff } from '../progress/streak'
 
@@ -92,6 +92,22 @@ export function priority(rec: ConceptMastery | undefined, today: string): number
   const overdue = dayDiff(rec.lastSeenAt, today) / Math.max(1, rec.intervalDays)
   const base = clamp(overdue, 0, 1.5)
   return base * (1 + (1 - rec.strength))
+}
+
+/**
+ * The recall concepts a learner has actually been taught: the union of mastery
+ * recall concepts across every lesson they have completed or mastered. The Daily
+ * Challenge draws ONLY from these so it never quizzes unlearned material. First
+ * appearance order is preserved; duplicates collapse.
+ */
+export function learnedConcepts(clearedLessonIds: Iterable<string>): MasteryConcept[] {
+  const concepts = new Set<MasteryConcept>()
+  for (const lessonId of clearedLessonIds) {
+    const challenge = getMasteryChallenge(lessonId)
+    if (!challenge) continue
+    for (const question of challenge.recall) concepts.add(question.concept)
+  }
+  return [...concepts]
 }
 
 /**
