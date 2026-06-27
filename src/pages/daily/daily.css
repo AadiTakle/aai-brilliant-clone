@@ -1,0 +1,111 @@
+/* Daily Challenge arena. A light, recurring spaced-repetition warm-up. It reuses
+   the app's tokens and mirrors the checkpoint/mastery arenas, but takes the
+   circuit (green) hue to read as "keep your knowledge powered" — flipping to gold
+   on completion like the app's other reward moments. */
+
+.daily-arena {
+  --daily-hue: var(--circuit);
+  position: relative;
+  max-width: 640px;
+  margin: 0 auto;
+  padding: var(--space-6) var(--space-4) var(--space-8);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  background:
+    radial-gradient(
+      120% 80% at 50% -10%,
+      color-mix(in srgb, var(--daily-hue) 14%, transparent),
+      transparent 70%
+    ),
+    var(--color-bg);
+}
+
+/* Completion flips the hue to gold to match the reward language. */
+.daily-arena[data-status='complete'] {
+  --daily-hue: var(--spark);
+}
+
+.daily-header {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.daily-eyebrow {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-muted);
+}
+
+.daily-header h1 {
+  margin: 0;
+}
+
+.daily-progress {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 0.82rem;
+  color: var(--color-muted);
+}
+
+/* Outcome cards (done / empty / complete) share the checkpoint + mastery surface
+   treatment with a hue-tinted border. The running quiz uses the .checkpoint card
+   from the article engine, which already matches. */
+.daily-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  align-items: flex-start;
+  background: var(--color-surface);
+  border: 1.5px solid color-mix(in srgb, var(--daily-hue) 32%, var(--color-border));
+  border-radius: var(--radius-lg);
+  padding: var(--space-5) var(--space-4);
+}
+
+.daily-card h2 {
+  margin: 0;
+}
+
+.daily-note {
+  margin: 0;
+  color: var(--color-muted);
+}
+
+.daily-nav {
+  display: flex;
+  justify-content: flex-end;
+}
+
+/* "Concepts you strengthened": small circuit-green chips, echoing the app's
+   green "powered/correct" success language. */
+.daily-strengthened {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.daily-strengthened ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.daily-strengthened li {
+  padding: 0.2rem 0.7rem;
+  border-radius: var(--radius-pill);
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--color-success);
+  background: var(--color-success-soft);
+  border: 1px solid color-mix(in srgb, var(--color-success) 30%, transparent);
+}

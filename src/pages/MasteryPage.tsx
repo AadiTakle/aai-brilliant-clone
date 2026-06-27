@@ -7,6 +7,7 @@ import { getLessonMeta } from '../content/course'
 import { getMasteryChallenge, type MasteryConcept } from '../content/mastery'
 import { motionAttr, useReducedMotion } from '../lib/ui/motion'
 import { loadLessonProgress, saveMasteryAttempt } from '../lib/progress/store'
+import type { LessonProgress } from '../lib/progress/model'
 import {
   emptyMasteryAttempt,
   masteryCorrectCount,
@@ -31,6 +32,7 @@ export function MasteryPage() {
   const { user, profile } = useAuth()
 
   const [attempt, setAttempt] = useState<MasteryAttempt>(() => emptyMasteryAttempt())
+  const [progress, setProgress] = useState<LessonProgress | null>(null)
   const [loading, setLoading] = useState(true)
   const [generating, setGenerating] = useState(false)
   const genStartedRef = useRef(false)
@@ -38,6 +40,22 @@ export function MasteryPage() {
   const meta = lesson ? getLessonMeta(lesson.id, lesson.title) : null
   const lessonNumber = lesson ? listLessons().findIndex((l) => l.id === lesson.id) + 1 : 0
   const alreadyMastered = Boolean(profile?.masteredLessons?.includes(lessonId))
+
+  // Gate entry on completing EVERY step of the lesson — including a final
+  // non-graded step (e.g. L4's exact-text article) that graded-only completion
+  // would skip. The server-authoritative completedLessons (a lesson finished on
+  // another device, or before a content/version bump orphaned the local doc) and
+  // an existing mastery also allow entry. For the L9 finale (whose only step is a
+  // non-graded briefing), "every step complete" simply means that briefing is done.
+  const allStepsComplete = Boolean(
+    progress &&
+      lesson &&
+      lesson.steps.length > 0 &&
+      lesson.steps.every((s) => progress.steps?.[s.id]?.status === 'completed'),
+  )
+  const canEnterMastery =
+    allStepsComplete || Boolean(profile?.completedLessons?.includes(lessonId)) || alreadyMastered
+  const resumeIndex = progress?.currentStepIndex ?? 0
 
   // Persist + advance helper: every phase/answer change is saved so a reload
   // resumes mid-challenge (and never re-runs AI generation).
@@ -61,6 +79,7 @@ export function MasteryPage() {
       try {
         const stored = await loadLessonProgress(db, user.uid, lesson.id)
         if (cancelled) return
+        setProgress(stored ?? null)
         setAttempt(stored?.mastery ?? emptyMasteryAttempt())
       } catch (err) {
         console.warn('Failed to load mastery attempt', err)
@@ -76,7 +95,7 @@ export function MasteryPage() {
 
   // Generate (or restore) the Apply questions when we reach the apply phase.
   useEffect(() => {
-    if (loading || !spec) return
+    if (loading || !spec || !canEnterMastery) return
     if (attempt.phase !== 'apply' || attempt.apply || genStartedRef.current) return
     genStartedRef.current = true
     setGenerating(true)
@@ -128,6 +147,25 @@ export function MasteryPage() {
         <p role="status" aria-live="polite">
           Preparing the challenge…
         </p>
+      </main>
+    )
+  }
+
+  // The Mastery Challenge is a lesson's finale: it can only be started once the
+  // lesson itself is complete. Reaching this route early (e.g. a stale link or a
+  // hand-typed URL) lands here instead of silently starting the challenge.
+  if (!canEnterMastery) {
+    return (
+      <main className="mastery-arena" data-phase="locked">
+        <section className="problem mastery-card">
+          <h2>Finish the lesson first</h2>
+          <p className="mastery-card-note">
+            The Mastery Challenge unlocks once you’ve completed every step of this lesson.
+          </p>
+          <Link to={`/lessons/${lessonId}/step/${resumeIndex}`} className="btn-machine">
+            Back to the lesson
+          </Link>
+        </section>
       </main>
     )
   }

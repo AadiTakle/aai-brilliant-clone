@@ -43,6 +43,7 @@ function makeProfile(masteredLessons: string[]): UserProfile {
     lastActiveDate: null,
     completedLessons: [],
     masteredLessons,
+    passedCheckpoints: [],
     activeDays: [],
   }
 }

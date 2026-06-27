@@ -1,10 +1,13 @@
 import { useRef, useState } from 'react'
 import { Checkpoint } from '../../problem-types/article/Checkpoint'
 import type { MasteryChallengeSpec, MasteryConcept } from '../../content/mastery'
+import { buildRecallForChallenge } from '../../lib/mastery/recall'
 
-// The recall stage: authored MCQs, one at a time, retry-until-correct. The FIRST
-// answer per question is what counts for concept-weighting — a wrong first try
-// records that question's concept as "missed", which the Apply stage targets.
+// The recall stage: MCQs one at a time, retry-until-correct. The questions are
+// drawn from the central bank for this lesson's concept(s) at the spec's exact
+// count (L9 keeps its authored FizzBuzz recall), with answer order randomized.
+// The FIRST answer per question is what counts for concept-weighting — a wrong
+// first try records that question's concept as "missed", which the Apply targets.
 export function MasteryRecall({
   spec,
   onComplete,
@@ -14,11 +17,13 @@ export function MasteryRecall({
 }) {
   const [index, setIndex] = useState(0)
   const [solved, setSolved] = useState(false)
+  // Drawn once per mount so the set is stable across re-renders within an attempt.
+  const [questions] = useState(() => buildRecallForChallenge(spec))
   const firstTry = useRef<Record<number, boolean>>({})
   const missed = useRef<MasteryConcept[]>([])
 
-  const q = spec.recall[index]
-  const isLast = index + 1 >= spec.recall.length
+  const q = questions[index]
+  const isLast = index + 1 >= questions.length
 
   function handleResult(correct: boolean) {
     if (firstTry.current[index] !== undefined) return
@@ -40,7 +45,7 @@ export function MasteryRecall({
   return (
     <div className="mastery-recall">
       <p className="mastery-stage-count">
-        Recall — question {index + 1} of {spec.recall.length}
+        Recall — question {index + 1} of {questions.length}
       </p>
       <Checkpoint
         key={index}

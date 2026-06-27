@@ -10,6 +10,7 @@ import { StreakBadge } from '../components/StreakBadge'
 import { useCountUp } from '../components/useCountUp'
 import { useReducedMotion } from '../lib/ui/motion'
 import { getLessonMeta } from '../content/course'
+import { checkpointGating } from '../content/checkpoints'
 import { loadLessonProgress } from '../lib/progress/store'
 import {
   completedCount,
@@ -107,6 +108,21 @@ export function ResultsPage() {
   const nextLesson =
     (complete || mastered) && idx >= 0 && idx < lessons.length - 1 ? lessons[idx + 1] : null
 
+  // A Mastery Checkpoint may gate the next lesson (cp-foundations before L4,
+  // cp-control-flow before L7). If the learner hasn't passed it yet — and hasn't
+  // already cleared that lesson (grandfathered) — the forward CTA must lead to the
+  // checkpoint rather than a lesson that is still locked behind it.
+  const passedCheckpoints = new Set(profile?.passedCheckpoints ?? [])
+  const nextAlreadyCleared = nextLesson
+    ? Boolean(
+        profile?.masteredLessons?.includes(nextLesson.id) ||
+          profile?.completedLessons?.includes(nextLesson.id),
+      )
+    : false
+  const nextGate = nextLesson ? checkpointGating(nextLesson.id) : null
+  const pendingGate =
+    nextGate && !passedCheckpoints.has(nextGate.id) && !nextAlreadyCleared ? nextGate : null
+
   const celebrate = complete || mastered
 
   return (
@@ -155,7 +171,11 @@ export function ResultsPage() {
         <Link to={`/lessons/${lesson.id}/step/0`} className="btn-ghost results-review">
           Review lesson
         </Link>
-        {nextLesson ? (
+        {pendingGate ? (
+          <Link to={`/checkpoint/${pendingGate.id}`} className="lesson-finish btn-machine">
+            Start checkpoint ▸
+          </Link>
+        ) : nextLesson ? (
           <Link to={`/lessons/${nextLesson.id}/step/0`} className="lesson-finish btn-machine">
             Next lesson ▸
           </Link>

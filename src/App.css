@@ -2531,6 +2531,8 @@ button.ghost:hover:not(:disabled) {
 
   /* Comfortable touch targets on phones. */
   button,
+  .btn-machine,
+  .btn-ghost,
   .lesson-start,
   .lesson-finish,
   .nav-signin,
@@ -2725,6 +2727,31 @@ button.ghost:hover:not(:disabled) {
   font-weight: 600;
   border-radius: var(--radius-pill);
   box-shadow: var(--shadow-sm);
+}
+
+/* As a standalone class, .btn-machine is a modifier — a real <button> inherits
+   its fill, color, and padding from the base `button` rule. Links styled as
+   buttons (the checkpoint "Continue", the daily "Back to course", the mastery
+   "See your results") have no such base, so give anchors the same machined-pill
+   chrome here so every primary CTA reads identically. */
+a.btn-machine {
+  padding: 0.6rem 1.25rem;
+  background: var(--color-primary);
+  color: var(--color-on-primary);
+}
+
+a.btn-machine:hover {
+  text-decoration: none;
+  background: var(--color-primary-hover);
+}
+
+a.btn-machine:active {
+  transform: translateY(1px);
+}
+
+a.btn-machine:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(75, 139, 190, 0.35);
 }
 
 .btn-ghost {

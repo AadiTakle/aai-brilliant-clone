@@ -2,9 +2,15 @@ import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { AnimatePresence, motion } from 'motion/react'
 import { LessonNode } from './LessonNode'
+import { CheckpointNode } from './CheckpointNode'
 import { LessonDetail } from './LessonDetail'
 import { course } from '../../content/course'
 import type { CourseState, CourseLessonState } from '../../lib/progress/useCourseProgress'
+
+const stationVariants = {
+  hidden: { opacity: 0, y: 16, scale: 0.9 },
+  shown: { opacity: 1, y: 0, scale: 1 },
+}
 
 export function CourseMap({ courseState }: { courseState: CourseState }) {
   const navigate = useNavigate()
@@ -44,24 +50,51 @@ export function CourseMap({ courseState }: { courseState: CourseState }) {
         animate="shown"
         variants={{ shown: { transition: { staggerChildren: 0.08 } } }}
       >
-        {lessons.map((state, i) => {
+        {lessons.flatMap((state, i) => {
           const isFinale = i === lessons.length - 1
           const prevComplete = i === 0 || lessons[i - 1].complete
-          return (
-            <motion.li
-              key={state.lesson.id}
-              className="course-station"
-              variants={{
-                hidden: { opacity: 0, y: 16, scale: 0.9 },
-                shown: { opacity: 1, y: 0, scale: 1 },
-              }}
-            >
-              {i > 0 && (
-                <span className="course-belt" aria-hidden="true">
+          const gate = state.gatedBy
+          // Each belt feeds the node directly below it. The belt into THIS lesson
+          // descends from a gating checkpoint (lit once that checkpoint is passed)
+          // when one is inserted, otherwise from the previous lesson (lit once it's
+          // complete). The belt into the checkpoint itself always descends from the
+          // previous lesson, so it lights on that lesson's completion.
+          const lessonBeltFilled = gate ? gate.passed : prevComplete
+          const stations = []
+          // A checkpoint barrier sits just BEFORE the lesson it gates.
+          if (gate) {
+            stations.push(
+              <motion.li key={`cp-${gate.id}`} className="course-station" variants={stationVariants}>
+                <span
+                  className="course-belt"
+                  aria-hidden="true"
+                  data-testid={`belt-${gate.id}`}
+                  data-filled={prevComplete ? 'true' : 'false'}
+                >
                   <motion.span
                     className="course-belt-fill"
                     initial={{ scaleY: 0 }}
                     animate={{ scaleY: prevComplete ? 1 : 0 }}
+                    transition={{ duration: 0.5, ease: 'easeOut' }}
+                  />
+                </span>
+                <CheckpointNode gate={gate} />
+              </motion.li>,
+            )
+          }
+          stations.push(
+            <motion.li key={state.lesson.id} className="course-station" variants={stationVariants}>
+              {i > 0 && (
+                <span
+                  className="course-belt"
+                  aria-hidden="true"
+                  data-testid={`belt-${state.lesson.id}`}
+                  data-filled={lessonBeltFilled ? 'true' : 'false'}
+                >
+                  <motion.span
+                    className="course-belt-fill"
+                    initial={{ scaleY: 0 }}
+                    animate={{ scaleY: lessonBeltFilled ? 1 : 0 }}
                     transition={{ duration: 0.5, ease: 'easeOut' }}
                   />
                 </span>
@@ -74,8 +107,9 @@ export function CourseMap({ courseState }: { courseState: CourseState }) {
                 isFinale={isFinale}
                 onSelect={setUserSelected}
               />
-            </motion.li>
+            </motion.li>,
           )
+          return stations
         })}
       </motion.ol>
 

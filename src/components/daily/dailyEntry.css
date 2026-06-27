@@ -1,0 +1,112 @@
+/* A compact home-page entry into the Daily Challenge — a sibling of the course
+   cards, built entirely from the shared tokens. It sits on the page background
+   (above the landing card or the map), so it uses surface/border tokens that
+   resolve correctly in both light and dark themes. The circuit-green accent
+   foreshadows the Daily arena's identity. */
+.daily-entry {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  width: 100%;
+  max-width: 520px;
+  margin: 0 auto var(--space-5);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-sm);
+  text-decoration: none;
+  color: var(--color-text);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, transform 0.05s ease;
+}
+
+.daily-entry:hover {
+  text-decoration: none;
+  border-color: var(--circuit);
+  box-shadow: var(--shadow-md);
+}
+
+.daily-entry:focus-visible {
+  outline: none;
+  border-color: var(--circuit);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--circuit) 30%, transparent);
+}
+
+.daily-entry:active {
+  transform: translateY(1px);
+}
+
+/* A rounded icon badge, matching the lesson-hud / widget-frame icon pattern. */
+.daily-entry-icon {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--circuit) 16%, var(--color-surface-2));
+  color: var(--circuit);
+  font-size: 1.25rem;
+  font-weight: 700;
+}
+
+.daily-entry-label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  text-align: left;
+  margin-right: auto;
+}
+
+.daily-entry-eyebrow {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-weight: 700;
+  color: var(--color-muted);
+}
+
+.daily-entry-text {
+  font-size: 0.95rem;
+  color: var(--color-text);
+}
+
+/* The action keeps the universal primary pill so it reads as a button (the green
+   is the feature's flavor, blue is the app's action color). */
+.daily-entry-cta {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  padding: 0.45rem 1.1rem;
+  border-radius: var(--radius-pill);
+  background: var(--color-primary);
+  color: var(--color-on-primary);
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 0.9rem;
+  white-space: nowrap;
+}
+
+/* Done for the day: the badge turns into a green check and the CTA calms down. */
+.daily-entry[data-done='true'] .daily-entry-icon {
+  color: var(--color-success);
+  background: var(--color-success-soft);
+}
+
+.daily-entry[data-done='true'] .daily-entry-cta {
+  background: var(--color-surface-2);
+  color: var(--color-muted);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .daily-entry {
+    transition: none;
+  }
+}
+
+@media (max-width: 640px) {
+  .daily-entry {
+    margin-bottom: var(--space-4);
+  }
+}

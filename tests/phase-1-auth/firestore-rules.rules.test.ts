@@ -40,6 +40,7 @@ describe('[Phase 1] firestore.rules', () => {
     lastActiveDate: null,
     completedLessons: [] as string[],
     masteredLessons: [] as string[],
+    passedCheckpoints: [] as string[],
     activeDays: [] as string[],
   }
 
@@ -68,6 +69,16 @@ describe('[Phase 1] firestore.rules', () => {
       await assertFails(setDoc(doc(alice, 'users/alice'), { totalPoints: 99999 }, { merge: true }))
       // ...as is bumping the streak or completion history.
       await assertFails(setDoc(doc(alice, 'users/alice'), { currentStreak: 50 }, { merge: true }))
+      // ...as is self-clearing a Mastery Checkpoint gate (passedCheckpoints is
+      // server-only, written only by commitCheckpointCompletion).
+      await assertFails(
+        setDoc(doc(alice, 'users/alice'), { passedCheckpoints: ['cp-foundations'] }, { merge: true }),
+      )
+    })
+
+    it('accepts a valid profile that carries the passedCheckpoints field', async () => {
+      const alice = testEnv.authenticatedContext('alice').firestore()
+      await assertSucceeds(setDoc(doc(alice, 'users/alice'), initialProfile))
     })
 
     it('forbids reading another user profile', async () => {
@@ -99,6 +110,44 @@ describe('[Phase 1] firestore.rules', () => {
     })
   })
 
+  describe('users/{uid}/concepts', () => {
+    it('lets the owner read their spaced-repetition concept records', async () => {
+      await testEnv.withSecurityRulesDisabled(async (ctx) => {
+        await setDoc(doc(ctx.firestore(), 'users/alice/concepts/loop'), { strength: 0.5 })
+      })
+      const alice = testEnv.authenticatedContext('alice').firestore()
+      await assertSucceeds(getDoc(doc(alice, 'users/alice/concepts/loop')))
+    })
+
+    it('forbids client writes (strength is server-owned, written by the Cloud Function)', async () => {
+      const alice = testEnv.authenticatedContext('alice').firestore()
+      await assertFails(setDoc(doc(alice, 'users/alice/concepts/loop'), { strength: 1 }))
+    })
+
+    it("forbids reading another user's concepts", async () => {
+      await testEnv.withSecurityRulesDisabled(async (ctx) => {
+        await setDoc(doc(ctx.firestore(), 'users/alice/concepts/loop'), { strength: 0.5 })
+      })
+      const bob = testEnv.authenticatedContext('bob').firestore()
+      await assertFails(getDoc(doc(bob, 'users/alice/concepts/loop')))
+    })
+  })
+
+  describe('users/{uid}/daily', () => {
+    it('lets the owner read their daily challenge markers', async () => {
+      await testEnv.withSecurityRulesDisabled(async (ctx) => {
+        await setDoc(doc(ctx.firestore(), 'users/alice/daily/2026-06-27'), { correctCount: 4, sparks: 200 })
+      })
+      const alice = testEnv.authenticatedContext('alice').firestore()
+      await assertSucceeds(getDoc(doc(alice, 'users/alice/daily/2026-06-27')))
+    })
+
+    it('forbids client writes (the daily ledger is server-owned)', async () => {
+      const alice = testEnv.authenticatedContext('alice').firestore()
+      await assertFails(setDoc(doc(alice, 'users/alice/daily/2026-06-27'), { sparks: 9999 }))
+    })
+  })
+
   describe('rewards/{rewardId}', () => {
     it('is server-only — clients can neither read nor write the ledger', async () => {
       const alice = testEnv.authenticatedContext('alice').firestore()
@@ -112,6 +161,14 @@ describe('[Phase 1] firestore.rules', () => {
       const alice = testEnv.authenticatedContext('alice').firestore()
       await assertFails(setDoc(doc(alice, 'masteryRewards/alice_l9-fizzbuzzpop'), { sparks: 9999 }))
       await assertFails(getDoc(doc(alice, 'masteryRewards/alice_l9-fizzbuzzpop')))
+    })
+  })
+
+  describe('checkpointRewards/{rewardId}', () => {
+    it('is server-only — clients can neither read nor write the checkpoint ledger', async () => {
+      const alice = testEnv.authenticatedContext('alice').firestore()
+      await assertFails(setDoc(doc(alice, 'checkpointRewards/alice_cp-foundations'), { sparks: 9999 }))
+      await assertFails(getDoc(doc(alice, 'checkpointRewards/alice_cp-foundations')))
     })
   })
 

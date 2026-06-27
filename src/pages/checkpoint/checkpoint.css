@@ -1,0 +1,213 @@
+/* Mastery Checkpoint arena. A cumulative, hard-gated recall quiz. It reuses the
+   app's design tokens (so light/dark both work) and mirrors the mastery arena's
+   structure, but takes a cool "accent" hue to read as a gate/milestone rather
+   than the coral mastery finale. Every animation has a reduced-motion fallback. */
+
+.checkpoint-arena {
+  --cp-hue: var(--color-accent);
+  position: relative;
+  max-width: 760px;
+  margin: 0 auto;
+  padding: var(--space-5) var(--space-4) var(--space-8);
+  min-height: 70vh;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  background:
+    radial-gradient(
+      120% 80% at 50% -10%,
+      color-mix(in srgb, var(--cp-hue) 16%, transparent),
+      transparent 70%
+    ),
+    var(--color-bg);
+}
+
+/* Passed: the hue flips to gold to match the reward. */
+.checkpoint-arena[data-phase='results'][data-passed='true'] {
+  --cp-hue: var(--spark);
+}
+
+/* --- Header ---------------------------------------------------------------- */
+.checkpoint-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.checkpoint-header-id {
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  color: var(--color-muted);
+}
+
+.checkpoint-stage-count {
+  font-family: var(--font-mono);
+  font-size: 0.82rem;
+  color: var(--color-muted);
+  margin: 0;
+}
+
+/* --- Cards ----------------------------------------------------------------- */
+.checkpoint-card {
+  background: var(--color-surface);
+  border: 1.5px solid color-mix(in srgb, var(--cp-hue) 35%, var(--color-border));
+  border-radius: var(--radius-lg);
+  padding: var(--space-5) var(--space-4);
+}
+
+.checkpoint-card-title {
+  margin: 0 0 var(--space-3);
+  font-family: var(--font-display);
+  font-size: clamp(1.5rem, 4vw, 2.1rem);
+  color: var(--color-text);
+}
+
+.checkpoint-blurb {
+  margin: 0;
+  color: var(--color-text);
+  line-height: 1.5;
+}
+
+.checkpoint-card-note {
+  color: var(--color-muted);
+  font-size: 0.95rem;
+  margin: var(--space-3) 0 0;
+}
+
+/* --- Quiz nav -------------------------------------------------------------- */
+.checkpoint-stage-nav {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: var(--space-4);
+}
+
+.checkpoint-actions {
+  display: flex;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+  margin-top: var(--space-4);
+}
+
+/* --- Results --------------------------------------------------------------- */
+.checkpoint-scoreboard {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+}
+
+.checkpoint-score-pct {
+  font-family: var(--font-display);
+  font-size: clamp(2.4rem, 7vw, 3.4rem);
+  line-height: 1;
+  color: var(--cp-hue);
+}
+
+/* The score pops in on the results screen, echoing the app's reward motion
+   (feedback-pop / the results spark hero) without the finale's full shower. */
+.checkpoint-arena[data-phase='results'] .checkpoint-score-pct {
+  animation: checkpoint-score-pop 0.5s ease both;
+}
+
+@keyframes checkpoint-score-pop {
+  0% {
+    opacity: 0;
+    transform: scale(0.7);
+  }
+  60% {
+    transform: scale(1.06);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .checkpoint-arena[data-phase='results'] .checkpoint-score-pct {
+    animation: none;
+  }
+}
+
+.checkpoint-verdict {
+  padding: 0.3rem 0.9rem;
+  border-radius: 999px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  font-size: 0.85rem;
+  border: 2px solid var(--color-border);
+}
+
+.checkpoint-verdict.is-pass {
+  border-color: var(--color-currency);
+  color: var(--color-currency);
+}
+
+.checkpoint-verdict.is-fail {
+  border-color: var(--color-danger);
+  color: var(--color-danger);
+}
+
+.checkpoint-breakdown {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: var(--space-2);
+}
+
+.checkpoint-breakdown th,
+.checkpoint-breakdown td {
+  text-align: left;
+  padding: 0.5rem 0.6rem;
+  border-bottom: 1px solid var(--color-border);
+  font-size: 0.95rem;
+}
+
+.checkpoint-breakdown th {
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-muted);
+}
+
+.checkpoint-breakdown td.is-pass {
+  color: var(--color-success);
+  font-weight: 700;
+}
+
+.checkpoint-breakdown td.is-fail {
+  color: var(--color-danger);
+  font-weight: 700;
+}
+
+.checkpoint-remediation {
+  margin-top: var(--space-5);
+}
+
+.checkpoint-remediation-title {
+  margin: 0 0 var(--space-2);
+  font-size: 1.05rem;
+  color: var(--color-text);
+}
+
+.checkpoint-remediation-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.checkpoint-remediation-list a {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--color-accent);
+  font-weight: 600;
+}
