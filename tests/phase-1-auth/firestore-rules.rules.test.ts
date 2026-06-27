@@ -99,6 +99,44 @@ describe('[Phase 1] firestore.rules', () => {
     })
   })
 
+  describe('users/{uid}/concepts', () => {
+    it('lets the owner read their spaced-repetition concept records', async () => {
+      await testEnv.withSecurityRulesDisabled(async (ctx) => {
+        await setDoc(doc(ctx.firestore(), 'users/alice/concepts/loop'), { strength: 0.5 })
+      })
+      const alice = testEnv.authenticatedContext('alice').firestore()
+      await assertSucceeds(getDoc(doc(alice, 'users/alice/concepts/loop')))
+    })
+
+    it('forbids client writes (strength is server-owned, written by the Cloud Function)', async () => {
+      const alice = testEnv.authenticatedContext('alice').firestore()
+      await assertFails(setDoc(doc(alice, 'users/alice/concepts/loop'), { strength: 1 }))
+    })
+
+    it("forbids reading another user's concepts", async () => {
+      await testEnv.withSecurityRulesDisabled(async (ctx) => {
+        await setDoc(doc(ctx.firestore(), 'users/alice/concepts/loop'), { strength: 0.5 })
+      })
+      const bob = testEnv.authenticatedContext('bob').firestore()
+      await assertFails(getDoc(doc(bob, 'users/alice/concepts/loop')))
+    })
+  })
+
+  describe('users/{uid}/daily', () => {
+    it('lets the owner read their daily challenge markers', async () => {
+      await testEnv.withSecurityRulesDisabled(async (ctx) => {
+        await setDoc(doc(ctx.firestore(), 'users/alice/daily/2026-06-27'), { correctCount: 4, sparks: 200 })
+      })
+      const alice = testEnv.authenticatedContext('alice').firestore()
+      await assertSucceeds(getDoc(doc(alice, 'users/alice/daily/2026-06-27')))
+    })
+
+    it('forbids client writes (the daily ledger is server-owned)', async () => {
+      const alice = testEnv.authenticatedContext('alice').firestore()
+      await assertFails(setDoc(doc(alice, 'users/alice/daily/2026-06-27'), { sparks: 9999 }))
+    })
+  })
+
   describe('rewards/{rewardId}', () => {
     it('is server-only — clients can neither read nor write the ledger', async () => {
       const alice = testEnv.authenticatedContext('alice').firestore()
