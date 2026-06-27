@@ -4,6 +4,7 @@ import { getCheckpoint, type CheckpointSpec } from '../content/checkpoints'
 import { buildCheckpointItems } from '../lib/checkpoints/itemBank'
 import { scoreCheckpoint, type CheckpointAnswer, type CheckpointResult } from '../lib/checkpoints/scoring'
 import { Checkpoint } from '../problem-types/article/Checkpoint'
+import { CheckpointResults } from './checkpoint/CheckpointResults'
 import './checkpoint/checkpoint.css'
 
 type Phase = 'brief' | 'quiz' | 'results'
@@ -127,24 +128,7 @@ function CheckpointRunner({ spec, onRetry }: { spec: CheckpointSpec; onRetry: ()
       )}
 
       {phase === 'results' && result && (
-        <section className="checkpoint-card">
-          <div className="checkpoint-scoreboard">
-            <span className="checkpoint-score-pct">{Math.round(result.overall * 100)}%</span>
-            <span className={`checkpoint-verdict ${result.passed ? 'is-pass' : 'is-fail'}`}>
-              {result.passed ? 'Passed' : 'Keep practicing'}
-            </span>
-          </div>
-          <div className="checkpoint-actions">
-            <Link to="/?view=map" className="btn-machine">
-              Back to course
-            </Link>
-            {!result.passed && (
-              <button type="button" className="btn-ghost" onClick={onRetry}>
-                Retry checkpoint
-              </button>
-            )}
-          </div>
-        </section>
+        <CheckpointResults spec={spec} result={result} onRetry={onRetry} />
       )}
     </main>
   )
