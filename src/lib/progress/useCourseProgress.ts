@@ -11,6 +11,7 @@ import {
   type LessonProgress,
 } from './model'
 import type { Lesson } from '../../content/schemas'
+import { checkpointGating } from '../../content/checkpoints'
 
 export interface CourseLessonState {
   lesson: Lesson
@@ -22,9 +23,13 @@ export interface CourseLessonState {
   /** The learner cleared this lesson's Mastery Challenge (gold on the map). */
   mastered: boolean
   started: boolean
-  /** A lesson unlocks once the previous one is mastered or (legacy) complete. The
-   *  first is always open. */
+  /** A lesson unlocks once the previous one is mastered or (legacy) complete AND
+   *  any gating Mastery Checkpoint has been passed. The first is always open. */
   unlocked: boolean
+  /** When a Mastery Checkpoint gates this lesson (and the learner isn't
+   *  grandfathered past it), describes the barrier so the map can render it.
+   *  `available` = reachable now (previous lesson cleared) but not yet passed. */
+  gatedBy?: { id: string; title: string; passed: boolean; available: boolean }
   /** Step index the CTA jumps to (resume where you left off, or restart to review). */
   targetIndex: number
   cta: string
@@ -43,6 +48,7 @@ export function useCourseProgress(): CourseState {
   const { user, profile } = useAuth()
   const lessons = listLessons()
   const masteredSet = new Set(profile?.masteredLessons ?? [])
+  const passed = new Set(profile?.passedCheckpoints ?? [])
   const [progressByLesson, setProgressByLesson] = useState<Record<string, LessonProgress>>({})
   const [loading, setLoading] = useState(true)
 
@@ -89,8 +95,25 @@ export function useCourseProgress(): CourseState {
     const complete = completion[index]
     const mastered = masteredSet.has(lesson.id)
     const started = done > 0 || resumeIndex > 0
-    // The first lesson is always open; the rest unlock when the prior is cleared.
-    const unlocked = index === 0 || cleared[index - 1]
+    // A Mastery Checkpoint may gate this lesson: it must be passed before the
+    // lesson unlocks — unless the learner is grandfathered (already cleared this
+    // lesson), so existing progress is never re-locked.
+    const gate = checkpointGating(lesson.id)
+    const grandfathered = complete || mastered
+    const checkpointClear = !gate || passed.has(gate.id) || grandfathered
+    // The first lesson is always open; the rest unlock when the prior is cleared
+    // AND any gating checkpoint is passed.
+    const prevCleared = index === 0 || cleared[index - 1]
+    const unlocked = prevCleared && checkpointClear
+    const gatedBy =
+      gate && !grandfathered
+        ? {
+            id: gate.id,
+            title: gate.title,
+            passed: passed.has(gate.id),
+            available: prevCleared && !passed.has(gate.id),
+          }
+        : undefined
     const doneForCta = complete || mastered
     return {
       lesson,
@@ -102,6 +125,7 @@ export function useCourseProgress(): CourseState {
       mastered,
       started,
       unlocked,
+      gatedBy,
       // Cleared lessons restart from the beginning for review.
       targetIndex: doneForCta ? 0 : started ? resumeIndex : 0,
       cta: lessonCtaLabel(doneForCta, started),
