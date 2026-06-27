@@ -5,6 +5,7 @@ import { MasteryPage } from '../pages/MasteryPage'
 import { ResultsPage } from '../pages/ResultsPage'
 import { CreateLessonPage } from '../pages/CreateLessonPage'
 import { AiLessonPage } from '../pages/AiLessonPage'
+import { DailyChallengePage } from '../pages/DailyChallengePage'
 import { SignInPage } from '../auth/SignInPage'
 import { SignUpPage } from '../auth/SignUpPage'
 import { RequireAuth } from '../auth/RequireAuth'
@@ -36,6 +37,14 @@ export function AppRoutes() {
         element={
           <RequireAuth>
             <ResultsPage />
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/daily"
+        element={
+          <RequireAuth>
+            <DailyChallengePage />
           </RequireAuth>
         }
       />
