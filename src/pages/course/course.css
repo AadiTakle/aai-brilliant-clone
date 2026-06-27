@@ -376,6 +376,58 @@
   }
 }
 
+/* ---- Mastery Checkpoint barrier station ---- */
+/* A gate between lessons. Smaller, rounded-square face so it reads as a barrier
+   distinct from the circular lesson stations. Reuses the .node-* layout + the
+   --course-* tokens so it sits naturally on the path. */
+.checkpoint-node-core {
+  width: 72px;
+  height: 72px;
+}
+
+.checkpoint-node-face {
+  width: 60px;
+  height: 60px;
+  border-radius: 16px;
+  font-size: 1.5rem;
+  background: var(--course-bg-2);
+  border: 2px solid var(--course-line);
+  color: var(--course-on);
+  transition: transform 0.15s ease, border-color 0.15s ease, background 0.15s ease;
+}
+
+.checkpoint-node.is-available .checkpoint-node-face {
+  border-color: var(--color-primary);
+  background: linear-gradient(180deg, var(--course-bg-2), var(--course-bg));
+  box-shadow: 0 0 0 4px var(--color-primary-soft),
+    0 0 20px color-mix(in srgb, var(--color-primary) 40%, transparent);
+}
+
+.checkpoint-node.is-passed .checkpoint-node-face {
+  border-color: var(--spark);
+  background: radial-gradient(circle at 50% 40%, rgba(255, 201, 60, 0.3), rgba(255, 201, 60, 0.12));
+  color: var(--spark);
+}
+
+.checkpoint-node.is-locked .checkpoint-node-face {
+  border-style: dashed;
+  color: var(--course-on-muted);
+  opacity: 0.7;
+}
+
+.checkpoint-node-flag {
+  font-size: 1.4rem;
+  color: var(--color-primary);
+}
+
+.checkpoint-node-label .node-num {
+  color: var(--color-primary);
+}
+
+.checkpoint-node.is-passed .checkpoint-node-label .node-num {
+  color: var(--spark);
+}
+
 /* Detail panel: gold accents when mastered. */
 .detail-icon.is-mastered {
   filter: drop-shadow(0 2px 10px rgba(255, 201, 60, 0.55));

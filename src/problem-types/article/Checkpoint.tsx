@@ -9,19 +9,28 @@ interface CheckpointProps {
   /** Fires on every Check with the result, so callers (e.g. the Mastery recall
    *  stage) can record a first-try miss. Optional + additive. */
   onResult?: (correct: boolean) => void
+  /** Answer-once mode (Mastery Checkpoints): the first Check is final — the
+   *  choices lock, the Check button hides, and onResult fires exactly once.
+   *  Defaults off, so the retry-until-correct article/mastery behavior is
+   *  byte-for-byte unchanged. */
+  gradeOnce?: boolean
 }
 
-export function Checkpoint({ block, onComplete, onResult }: CheckpointProps) {
+export function Checkpoint({ block, onComplete, onResult, gradeOnce = false }: CheckpointProps) {
   const reduced = useReducedMotion()
   const [selected, setSelected] = useState<number | null>(null)
   const [result, setResult] = useState<'correct' | 'incorrect' | null>(null)
   // Bumped on every Check so a repeated wrong answer re-keys (and replays) the
   // shake — otherwise the banner stays mounted and the animation never restarts.
   const [attempts, setAttempts] = useState(0)
+  // Answer-once lock: set on the first Check when `gradeOnce`, so the learner
+  // cannot retry and onResult fires exactly once.
+  const [locked, setLocked] = useState(false)
 
   function check() {
-    if (selected === null) return
+    if (selected === null || locked) return
     setAttempts((a) => a + 1)
+    if (gradeOnce) setLocked(true)
     if (selected === block.answerIndex) {
       setResult('correct')
       onResult?.(true)
@@ -56,7 +65,7 @@ export function Checkpoint({ block, onComplete, onResult }: CheckpointProps) {
                   type="radio"
                   name={block.prompt}
                   checked={selected === i}
-                  disabled={solved}
+                  disabled={solved || locked}
                   onChange={() => setSelected(i)}
                 />
                 <span>{choice}</span>
@@ -66,7 +75,7 @@ export function Checkpoint({ block, onComplete, onResult }: CheckpointProps) {
         })}
       </ul>
 
-      {!solved && (
+      {!solved && !locked && (
         <button type="button" className="btn-machine" onClick={check} disabled={selected === null}>
           Check
         </button>

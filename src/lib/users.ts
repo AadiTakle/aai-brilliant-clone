@@ -16,6 +16,10 @@ export interface UserProfile {
   /** Lessons whose Mastery Challenge the learner has cleared (gold on the map).
    *  Server-owned, written only by the commitMasteryCompletion Cloud Function. */
   masteredLessons: string[]
+  /** Mastery Checkpoints the learner has passed (clears the gate on the next
+   *  lesson). Server-owned, written only by the commitCheckpointCompletion
+   *  Cloud Function. */
+  passedCheckpoints: string[]
   /** ISO (YYYY-MM-DD) days on which the learner completed a full lesson. */
   activeDays: string[]
 }
@@ -41,6 +45,7 @@ export async function createUserProfile(
     lastActiveDate: null,
     completedLessons: [],
     masteredLessons: [],
+    passedCheckpoints: [],
     activeDays: [],
     createdAt: serverTimestamp(),
   }

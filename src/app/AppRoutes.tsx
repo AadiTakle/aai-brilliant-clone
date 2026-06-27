@@ -2,6 +2,7 @@ import { Route, Routes } from 'react-router-dom'
 import { CoursePage } from '../pages/CoursePage'
 import { LessonPage } from '../pages/LessonPage'
 import { MasteryPage } from '../pages/MasteryPage'
+import { CheckpointPage } from '../pages/CheckpointPage'
 import { ResultsPage } from '../pages/ResultsPage'
 import { CreateLessonPage } from '../pages/CreateLessonPage'
 import { AiLessonPage } from '../pages/AiLessonPage'
@@ -28,6 +29,14 @@ export function AppRoutes() {
         element={
           <RequireAuth>
             <MasteryPage />
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/checkpoint/:checkpointId"
+        element={
+          <RequireAuth>
+            <CheckpointPage />
           </RequireAuth>
         }
       />
