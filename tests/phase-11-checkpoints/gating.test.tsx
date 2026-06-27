@@ -39,14 +39,16 @@ function completeProgress(lessonId: string): LessonProgress {
   return { lessonVersion: lesson.version, currentStepIndex: 0, steps }
 }
 
-function makeProfile(opts: { masteredLessons?: string[]; passedCheckpoints?: string[] } = {}): UserProfile {
+function makeProfile(
+  opts: { masteredLessons?: string[]; passedCheckpoints?: string[]; completedLessons?: string[] } = {},
+): UserProfile {
   return {
     displayName: 'A',
     email: 'a@e.com',
     totalPoints: 0,
     currentStreak: 0,
     lastActiveDate: null,
-    completedLessons: [],
+    completedLessons: opts.completedLessons ?? [],
     masteredLessons: opts.masteredLessons ?? [],
     passedCheckpoints: opts.passedCheckpoints ?? [],
     activeDays: [],
@@ -104,6 +106,27 @@ describe('[Phase 11] checkpoint gating in useCourseProgress', () => {
     })
     await waitFor(() => expect(result.current.loading).toBe(false))
 
+    const gated = result.current.lessons[gatedIndex]
+    expect(gated.unlocked).toBe(true)
+    expect(gated.gatedBy?.passed).toBe(true)
+  })
+
+  it('unlocks via the server-authoritative completedLessons even when the local progress doc is gone', async () => {
+    // The exact reported path: the learner FINISHED L1–L3 (so the reward Cloud
+    // Functions recorded them in completedLessons) and PASSED cp-foundations, but
+    // the per-lesson progress docs no longer report complete — e.g. a lesson
+    // content/version bump orphaned them. The map must still treat L3 as cleared
+    // and open L4; otherwise a passed checkpoint never unlocks its gated lesson.
+    loadLessonProgress.mockResolvedValue(null)
+    const { result } = renderHook(() => useCourseProgress(), {
+      wrapper: wrapper(makeProfile({ completedLessons: PRIOR_LESSONS, passedCheckpoints: [GATE] })),
+    })
+    await waitFor(() => expect(result.current.loading).toBe(false))
+
+    // L3 is counted complete from the server record (not the missing local doc)...
+    const priorIndex = lessons.findIndex((l) => l.id === 'l3-doing-the-math')
+    expect(result.current.lessons[priorIndex].complete).toBe(true)
+    // ...so the gated lesson opens now that the checkpoint is also passed.
     const gated = result.current.lessons[gatedIndex]
     expect(gated.unlocked).toBe(true)
     expect(gated.gatedBy?.passed).toBe(true)

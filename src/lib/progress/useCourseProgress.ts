@@ -49,6 +49,11 @@ export function useCourseProgress(): CourseState {
   const lessons = listLessons()
   const masteredSet = new Set(profile?.masteredLessons ?? [])
   const passed = new Set(profile?.passedCheckpoints ?? [])
+  // The server-authoritative record of finished lessons (written by the reward
+  // Cloud Functions). It's the same signal ResultsPage trusts, and it survives a
+  // lesson content/version bump that would orphan the per-step progress doc — so
+  // the gate never re-locks a lesson the learner has genuinely completed.
+  const completedSet = new Set(profile?.completedLessons ?? [])
   const [progressByLesson, setProgressByLesson] = useState<Record<string, LessonProgress>>({})
   const [loading, setLoading] = useState(true)
 
@@ -83,7 +88,11 @@ export function useCourseProgress(): CourseState {
   // (grandfathered) already complete — so existing progress is never re-locked.
   const completion = lessons.map((lesson) => {
     const progress = progressByLesson[lesson.id]
-    return progress ? isLessonComplete(progress, lesson) : false
+    const localComplete = progress ? isLessonComplete(progress, lesson) : false
+    // Honor the server's completion record too: a learner who finished the lesson
+    // on another device — or before a content/version change reset the local
+    // per-step doc — is still "complete" for gating, belts, and the tally.
+    return localComplete || completedSet.has(lesson.id)
   })
   const cleared = lessons.map((lesson, i) => completion[i] || masteredSet.has(lesson.id))
 
