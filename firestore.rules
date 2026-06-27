@@ -17,7 +17,7 @@ service cloud.firestore {
       return request.resource.data.keys().hasOnly(
                ['displayName', 'email', 'totalPoints', 'currentStreak',
                 'lastActiveDate', 'completedLessons', 'masteredLessons',
-                'activeDays', 'createdAt'])
+                'passedCheckpoints', 'activeDays', 'createdAt'])
              && request.resource.data.totalPoints is int
              && request.resource.data.totalPoints >= 0
              && request.resource.data.currentStreak is int
@@ -32,6 +32,7 @@ service cloud.firestore {
              && request.resource.data.lastActiveDate == null
              && request.resource.data.completedLessons == []
              && request.resource.data.masteredLessons == []
+             && request.resource.data.passedCheckpoints == []
              && request.resource.data.activeDays == [];
     }
 
@@ -45,6 +46,7 @@ service cloud.firestore {
              && request.resource.data.lastActiveDate == resource.data.lastActiveDate
              && request.resource.data.completedLessons == resource.data.completedLessons
              && request.resource.data.masteredLessons == resource.data.masteredLessons
+             && request.resource.data.passedCheckpoints == resource.data.passedCheckpoints
              && request.resource.data.activeDays == resource.data.activeDays;
     }
 
@@ -73,6 +75,14 @@ service cloud.firestore {
     // commitMasteryCompletion via the Admin SDK). It guarantees the big mastery
     // Spark award fires at most once per lesson, so clients can't touch it.
     match /masteryRewards/{rewardId} {
+      allow read, write: if false;
+    }
+
+    // Server-only one-time Mastery Checkpoint ledger (written by
+    // commitCheckpointCompletion via the Admin SDK). It guarantees the flat
+    // checkpoint Spark award fires at most once per checkpoint, so clients can't
+    // touch it.
+    match /checkpointRewards/{rewardId} {
       allow read, write: if false;
     }
 
