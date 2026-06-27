@@ -11,6 +11,7 @@ import {
 } from './masterySpec.js'
 import { validateLessonStructure, MAX_LESSON_JSON_BYTES } from './validateLesson.js'
 import { BUILTIN_LESSON_META } from './builtinLessonMeta.js'
+import { BUILTIN_CHECKPOINT_META, awardCheckpoint } from './checkpointMeta.js'
 import {
   awardStep,
   awardMastery,
@@ -516,5 +517,83 @@ export const commitMasteryCompletion = onCall(async (req) => {
       currentStreak: nextStreak.currentStreak,
       awarded: sparks > 0,
     }
+  })
+})
+
+interface CheckpointCommitData {
+  checkpointId?: string
+  passed?: unknown
+}
+
+// Server-authoritative Mastery Checkpoint completion. The client reports which
+// checkpoint it passed; the server pays a FLAT, one-time Spark award from the
+// trusted BUILTIN_CHECKPOINT_META (the content value is not trusted), records the
+// pass in passedCheckpoints (which gates the next lesson), advances the streak,
+// and writes a one-time ledger at checkpointRewards/{uid}_{checkpointId} so the
+// award fires at most once. Mirrors commitMasteryCompletion's trust model.
+export const commitCheckpointCompletion = onCall(async (req) => {
+  if (!req.auth) {
+    throw new HttpsError('unauthenticated', 'Sign in to record a checkpoint.')
+  }
+  const uid = req.auth.uid
+  const data = req.data as CheckpointCommitData
+  const checkpointId = String(data?.checkpointId ?? '')
+  const passed = data?.passed === true
+
+  const meta = BUILTIN_CHECKPOINT_META[checkpointId]
+  // Only known checkpoints can mint Sparks, and only on a real pass. An unknown
+  // id or a non-pass writes nothing at all.
+  if (!meta) {
+    return { awarded: false, passed: false }
+  }
+  if (!passed) {
+    return { awarded: false, passed: false }
+  }
+
+  const db = getFirestore()
+  const userRef = db.doc(`users/${uid}`)
+  const ledgerRef = db.doc(`checkpointRewards/${uid}_${checkpointId}`)
+  const today = new Date().toISOString().slice(0, 10) // server UTC day
+
+  return await db.runTransaction(async (tx) => {
+    const [userSnap, ledgerSnap] = await Promise.all([tx.get(userRef), tx.get(ledgerRef)])
+    const u = userSnap.data() ?? {}
+    const currentTotal = (u.totalPoints as number) ?? 0
+
+    // Idempotent: a checkpoint already in the ledger pays out at most once.
+    if (ledgerSnap.exists) {
+      return { awarded: false, passed: true, totalPoints: currentTotal }
+    }
+
+    const { awarded, sparks } = awardCheckpoint(meta, { passed: true, alreadyAwarded: false })
+    const newTotal = currentTotal + sparks
+
+    // Passing a checkpoint counts as today's activity, so the streak advances
+    // exactly like clearing a lesson does.
+    const streakState: StreakState = {
+      currentStreak: (u.currentStreak as number) ?? 0,
+      lastActiveDate: (u.lastActiveDate as string | null) ?? null,
+    }
+    const nextStreak = updateStreak(streakState, today)
+    const passedCheckpoints: string[] = Array.isArray(u.passedCheckpoints) ? (u.passedCheckpoints as string[]) : []
+    const activeDays: string[] = Array.isArray(u.activeDays) ? (u.activeDays as string[]) : []
+
+    const userUpdate: Record<string, unknown> = {
+      totalPoints: newTotal,
+      currentStreak: nextStreak.currentStreak,
+      lastActiveDate: nextStreak.lastActiveDate,
+      passedCheckpoints: Array.from(new Set([...passedCheckpoints, checkpointId])),
+      activeDays: Array.from(new Set([...activeDays, today])),
+    }
+
+    tx.set(userRef, userUpdate, { merge: true })
+    tx.set(ledgerRef, {
+      uid,
+      checkpointId,
+      sparks,
+      updatedAt: FieldValue.serverTimestamp(),
+    })
+
+    return { awarded, passed: true, sparksDelta: sparks, totalPoints: newTotal }
   })
 })
