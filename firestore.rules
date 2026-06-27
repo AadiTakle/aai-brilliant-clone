@@ -60,6 +60,22 @@ service cloud.firestore {
         allow read: if isOwner(userId);
         allow write: if false;
       }
+
+      // Spaced-repetition per-concept mastery (Daily Challenges). Owner-readable
+      // so the client can schedule which concepts are due, but WRITTEN only by the
+      // commitDailyChallenge Cloud Function (Admin SDK) so strength/Sparks can't be
+      // forged.
+      match /concepts/{conceptId} {
+        allow read: if isOwner(userId);
+        allow write: if false;
+      }
+
+      // One-per-day Daily Challenge marker (correctCount + Sparks awarded). Server
+      // writes it once per day to make the award idempotent; clients only read.
+      match /daily/{dayId} {
+        allow read: if isOwner(userId);
+        allow write: if false;
+      }
     }
 
     // Server-only reward ledger (written by recordStepCompletion via the Admin
