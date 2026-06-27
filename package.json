@@ -17,6 +17,7 @@
     "test:pyodide": "vitest run --config vitest.pyodide.config.ts",
     "validate-content": "tsx scripts/validate-content.ts",
     "gen-lesson-meta": "tsx scripts/gen-lesson-meta.ts",
+    "probe:mastery": "tsx scripts/probe-mastery.ts",
     "deploy": "npm run build && firebase deploy --only hosting,firestore,functions",
     "deploy:hosting": "npm run build && firebase deploy --only hosting"
   },

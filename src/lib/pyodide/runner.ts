@@ -50,7 +50,6 @@ function timeoutEnabled(ms: number): boolean {
 // CDN. A module worker loads Pyodide with a CORS-friendly dynamic `import()`
 // instead. We pass the CDN base in via the run message so the version stays
 // defined once, here.
-const WORKER_URL = `${import.meta.env.BASE_URL}pyodide.worker.js`
 
 let worker: Worker | null = null
 let nextRunId = 0
@@ -60,7 +59,11 @@ let runChain: Promise<RunResult | void> = Promise.resolve()
 
 function getWorker(): Worker {
   if (!worker) {
-    worker = new Worker(WORKER_URL, { type: 'module' })
+    // Resolved lazily (not at module load) so importing this module in a non-Vite
+    // context — e.g. a tsx script — never touches `import.meta.env`, which only
+    // the browser worker path needs anyway.
+    const workerUrl = `${import.meta.env.BASE_URL}pyodide.worker.js`
+    worker = new Worker(workerUrl, { type: 'module' })
   }
   return worker
 }
