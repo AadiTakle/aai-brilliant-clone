@@ -87,6 +87,23 @@ export function sampleN<T>(arr: readonly T[], n: number, rng: () => number = Mat
   return shuffle(arr, rng).slice(0, Math.max(0, n))
 }
 
+/**
+ * Returns a copy of an MCQ with its `choices` randomized and `answerIndex`
+ * remapped so the SAME choice stays correct. This is the single util every recall
+ * renderer uses to shuffle answer order. It reuses `shuffle` and the same
+ * injectable `rng`, so tests can pin the order. It shuffles INDICES (not the
+ * strings), so it is correct even if two choices happen to share text.
+ */
+export function shuffleChoices<Q extends { choices: string[]; answerIndex: number }>(
+  question: Q,
+  rng: () => number = Math.random,
+): Q {
+  const order = shuffle([...question.choices.keys()], rng)
+  const choices = order.map((i) => question.choices[i])
+  const answerIndex = order.indexOf(question.answerIndex)
+  return { ...question, choices, answerIndex }
+}
+
 // A single drawn checkpoint question, carrying the concept it was sampled for so
 // scoring can group answers per concept.
 export interface CheckpointItem {
