@@ -7,7 +7,7 @@ import { getLessonMeta } from '../content/course'
 import { getMasteryChallenge, type MasteryConcept } from '../content/mastery'
 import { motionAttr, useReducedMotion } from '../lib/ui/motion'
 import { loadLessonProgress, saveMasteryAttempt } from '../lib/progress/store'
-import { isLessonComplete, type LessonProgress } from '../lib/progress/model'
+import type { LessonProgress } from '../lib/progress/model'
 import {
   emptyMasteryAttempt,
   masteryCorrectCount,
@@ -41,19 +41,20 @@ export function MasteryPage() {
   const lessonNumber = lesson ? listLessons().findIndex((l) => l.id === lesson.id) + 1 : 0
   const alreadyMastered = Boolean(profile?.masteredLessons?.includes(lessonId))
 
-  // Gate entry on lesson completion, computed the SAME way the course map does
-  // (src/lib/progress/useCourseProgress.ts): honor the per-lesson progress doc
-  // (isLessonComplete) AND the server-authoritative completedLessons, so a lesson
-  // finished on another device — or before a content/version bump orphaned the
-  // local doc — still counts. The L9 finale has NO graded steps (its Mastery
-  // Challenge IS the completion path); isLessonComplete returns false there, so we
-  // also allow when the lesson has no graded steps. Already-mastered always passes.
-  const hasGradedSteps = Boolean(lesson?.steps.some((s) => s.graded))
-  const lessonComplete = Boolean(
-    (progress && lesson && isLessonComplete(progress, lesson)) ||
-      profile?.completedLessons?.includes(lessonId),
+  // Gate entry on completing EVERY step of the lesson — including a final
+  // non-graded step (e.g. L4's exact-text article) that graded-only completion
+  // would skip. The server-authoritative completedLessons (a lesson finished on
+  // another device, or before a content/version bump orphaned the local doc) and
+  // an existing mastery also allow entry. For the L9 finale (whose only step is a
+  // non-graded briefing), "every step complete" simply means that briefing is done.
+  const allStepsComplete = Boolean(
+    progress &&
+      lesson &&
+      lesson.steps.length > 0 &&
+      lesson.steps.every((s) => progress.steps?.[s.id]?.status === 'completed'),
   )
-  const canEnterMastery = !hasGradedSteps || lessonComplete || alreadyMastered
+  const canEnterMastery =
+    allStepsComplete || Boolean(profile?.completedLessons?.includes(lessonId)) || alreadyMastered
   const resumeIndex = progress?.currentStepIndex ?? 0
 
   // Persist + advance helper: every phase/answer change is saved so a reload

@@ -26,6 +26,9 @@ const lessons = listLessons()
 // completion path), so the two exercise both halves of the guard.
 const GRADED_LESSON = 'l1-talking-to-the-computer'
 const L9 = 'l9-fizzbuzzpop'
+// L4's LAST step (exact-text) is non-graded, so all GRADED steps can be done
+// while the final step is still unfinished — the reported "start mastery early" case.
+const NONGRADED_LAST_LESSON = 'l4-true-or-false'
 
 function completeProgress(lessonId: string): LessonProgress {
   const lesson = lessons.find((l) => l.id === lessonId)!
@@ -40,6 +43,24 @@ function completeProgress(lessonId: string): LessonProgress {
     }
   }
   return { lessonVersion: lesson.version, currentStepIndex: 0, steps }
+}
+
+// All GRADED steps completed, but NON-graded steps (including a non-graded LAST
+// step like L4's exact-text article) left unfinished — reproduces the report.
+function gradedOnlyProgress(lessonId: string): LessonProgress {
+  const lesson = lessons.find((l) => l.id === lessonId)!
+  const steps: LessonProgress['steps'] = {}
+  for (const s of lesson.steps) {
+    if (!s.graded) continue
+    steps[s.id] = {
+      status: 'completed',
+      attempts: 1,
+      wrongAttempts: 0,
+      lastCorrect: true,
+      pointsAwarded: 100,
+    }
+  }
+  return { lessonVersion: lesson.version, currentStepIndex: lesson.steps.length - 1, steps }
 }
 
 function makeProfile(
@@ -86,6 +107,18 @@ describe('[Mastery] entry gating', () => {
     )
   })
 
+  it('BLOCKS when the last step is non-graded and unfinished, even though all graded steps are done', async () => {
+    loadLessonProgress.mockImplementation(async (_db, _uid, lessonId) =>
+      lessonId === NONGRADED_LAST_LESSON ? gradedOnlyProgress(NONGRADED_LAST_LESSON) : null,
+    )
+    renderMastery(NONGRADED_LAST_LESSON, makeProfile())
+
+    expect(
+      await screen.findByRole('heading', { name: /finish the lesson first/i }),
+    ).toBeInTheDocument()
+    expect(screen.queryByText('Mastery Challenge')).not.toBeInTheDocument()
+  })
+
   it('ALLOWS the challenge once every graded step is completed (local progress)', async () => {
     loadLessonProgress.mockImplementation(async (_db, _uid, lessonId) =>
       lessonId === GRADED_LESSON ? completeProgress(GRADED_LESSON) : null,
@@ -104,8 +137,10 @@ describe('[Mastery] entry gating', () => {
     expect(screen.queryByRole('heading', { name: /finish the lesson first/i })).not.toBeInTheDocument()
   })
 
-  it('ALLOWS L9 (the finale has no graded steps) even with no progress', async () => {
-    loadLessonProgress.mockResolvedValue(null)
+  it('ALLOWS L9 (the finale) once its briefing step is completed', async () => {
+    loadLessonProgress.mockImplementation(async (_db, _uid, lessonId) =>
+      lessonId === L9 ? completeProgress(L9) : null,
+    )
     renderMastery(L9, makeProfile())
 
     expect(await screen.findByText('Mastery Challenge')).toBeInTheDocument()

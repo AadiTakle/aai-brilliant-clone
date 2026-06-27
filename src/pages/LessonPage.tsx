@@ -9,7 +9,7 @@ import { getLessonMeta } from '../content/course'
 import { hasMasteryChallenge } from '../content/mastery'
 import { CURRENCY_GLYPH, CURRENCY_NAME } from '../components/Currency'
 import { useLessonProgress } from '../lib/progress/useLessonProgress'
-import { getStepProgress, isLessonComplete, pointsEarned } from '../lib/progress/model'
+import { getStepProgress, pointsEarned } from '../lib/progress/model'
 
 export function LessonPage() {
   const params = useParams()
@@ -34,14 +34,15 @@ export function LessonPage() {
   }
 
   const { lesson, step, isFirst, isLast, total } = location
-  const lessonComplete = isLessonComplete(progress, lesson)
   const currentComplete = getStepProgress(progress, step.id).status === 'completed'
   // Lessons with no graded steps (e.g. the L9 finale) can still finish once every
   // step has been completed, so the mastery handoff isn't blocked.
   const allStepsDone = lesson.steps.every(
     (s) => getStepProgress(progress, s.id).status === 'completed',
   )
-  const canFinish = lessonComplete || allStepsDone
+  // Finishing requires EVERY step done (including a non-graded final step), so a
+  // graded-only "complete" can't skip the last step into the Mastery handoff.
+  const canFinish = allStepsDone
   // The finale is a Mastery Challenge: when this lesson has a mastery spec, Finish
   // hands off to the challenge instead of going straight to results.
   const masteryNext = hasMasteryChallenge(lesson.id)
