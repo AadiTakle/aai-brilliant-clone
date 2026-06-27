@@ -17,14 +17,16 @@ export const LessonNode = forwardRef<HTMLButtonElement, LessonNodeProps>(functio
   { state, isCurrent, isSelected, isFinale, onSelect },
   ref,
 ) {
-  const { meta, index, done, total, complete, unlocked } = state
-  const pct = total > 0 ? done / total : 0
+  const { meta, index, done, total, complete, mastered, unlocked } = state
+  // A mastered lesson shows a full gold ring even if it has no graded steps.
+  const pct = mastered ? 1 : total > 0 ? done / total : 0
   const offset = RING_CIRCUMFERENCE * (1 - pct)
 
   const classes = [
     'node-button',
     complete ? 'is-complete' : '',
-    isCurrent && !complete ? 'is-current' : '',
+    mastered ? 'is-mastered' : '',
+    isCurrent && !complete && !mastered ? 'is-current' : '',
     isSelected ? 'is-selected' : '',
     !unlocked ? 'is-locked' : '',
     isFinale ? 'is-finale' : '',
@@ -34,7 +36,9 @@ export const LessonNode = forwardRef<HTMLButtonElement, LessonNodeProps>(functio
 
   const label = !unlocked
     ? `Lesson ${index + 1}, ${meta.shortTitle}, locked`
-    : `Lesson ${index + 1}, ${meta.shortTitle}, ${done} of ${total} steps done`
+    : mastered
+      ? `Lesson ${index + 1}, ${meta.shortTitle}, mastered`
+      : `Lesson ${index + 1}, ${meta.shortTitle}, ${done} of ${total} steps done`
 
   return (
     <button
@@ -64,6 +68,10 @@ export const LessonNode = forwardRef<HTMLButtonElement, LessonNodeProps>(functio
             <span className="node-lock" aria-hidden="true">
               {'\u{1F512}'}
             </span>
+          ) : mastered ? (
+            <span className="node-star" aria-hidden="true">
+              {'\u2726'}
+            </span>
           ) : complete ? (
             <span className="node-check" aria-hidden="true">
               {'\u2713'}
@@ -72,6 +80,13 @@ export const LessonNode = forwardRef<HTMLButtonElement, LessonNodeProps>(functio
             <span aria-hidden="true">{meta.icon}</span>
           )}
         </span>
+        {mastered && (
+          <span className="node-motes" aria-hidden="true">
+            <span className="node-mote" />
+            <span className="node-mote" />
+            <span className="node-mote" />
+          </span>
+        )}
       </span>
       <span className="node-label">
         <span className="node-num">Lesson {index + 1}</span>

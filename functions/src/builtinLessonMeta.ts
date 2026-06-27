@@ -8,9 +8,17 @@ export interface BuiltinStepMeta {
   minPoints: number
 }
 
+export interface BuiltinMasteryMeta {
+  /** Number of authored recall MCQs. */
+  recallCount: number
+  /** Cap on awarded mastery questions (recall + apply) — the anti-forge ceiling. */
+  maxQuestions: number
+}
+
 export interface BuiltinLessonMeta {
   version: number
   steps: BuiltinStepMeta[]
+  mastery?: BuiltinMasteryMeta
 }
 
 export const BUILTIN_LESSON_META: Record<string, BuiltinLessonMeta> = {
@@ -35,7 +43,11 @@ export const BUILTIN_LESSON_META: Record<string, BuiltinLessonMeta> = {
         "points": 100,
         "minPoints": 20
       }
-    ]
+    ],
+    "mastery": {
+      "recallCount": 3,
+      "maxQuestions": 5
+    }
   },
   "l2-boxes-that-remember": {
     "version": 2,
@@ -64,7 +76,11 @@ export const BUILTIN_LESSON_META: Record<string, BuiltinLessonMeta> = {
         "points": 100,
         "minPoints": 20
       }
-    ]
+    ],
+    "mastery": {
+      "recallCount": 3,
+      "maxQuestions": 5
+    }
   },
   "l3-doing-the-math": {
     "version": 2,
@@ -87,7 +103,11 @@ export const BUILTIN_LESSON_META: Record<string, BuiltinLessonMeta> = {
         "points": 100,
         "minPoints": 20
       }
-    ]
+    ],
+    "mastery": {
+      "recallCount": 3,
+      "maxQuestions": 5
+    }
   },
   "l4-true-or-false": {
     "version": 2,
@@ -116,7 +136,11 @@ export const BUILTIN_LESSON_META: Record<string, BuiltinLessonMeta> = {
         "points": 100,
         "minPoints": 20
       }
-    ]
+    ],
+    "mastery": {
+      "recallCount": 3,
+      "maxQuestions": 5
+    }
   },
   "l5-making-decisions": {
     "version": 3,
@@ -157,7 +181,11 @@ export const BUILTIN_LESSON_META: Record<string, BuiltinLessonMeta> = {
         "points": 100,
         "minPoints": 20
       }
-    ]
+    ],
+    "mastery": {
+      "recallCount": 3,
+      "maxQuestions": 5
+    }
   },
   "l6-over-and-over-again": {
     "version": 2,
@@ -210,7 +238,11 @@ export const BUILTIN_LESSON_META: Record<string, BuiltinLessonMeta> = {
         "points": 100,
         "minPoints": 20
       }
-    ]
+    ],
+    "mastery": {
+      "recallCount": 3,
+      "maxQuestions": 5
+    }
   },
   "l7-loops-and-decisions": {
     "version": 2,
@@ -239,7 +271,11 @@ export const BUILTIN_LESSON_META: Record<string, BuiltinLessonMeta> = {
         "points": 100,
         "minPoints": 20
       }
-    ]
+    ],
+    "mastery": {
+      "recallCount": 3,
+      "maxQuestions": 5
+    }
   },
   "l8-build-your-own-machine": {
     "version": 2,
@@ -274,23 +310,25 @@ export const BUILTIN_LESSON_META: Record<string, BuiltinLessonMeta> = {
         "points": 100,
         "minPoints": 20
       }
-    ]
+    ],
+    "mastery": {
+      "recallCount": 3,
+      "maxQuestions": 5
+    }
   },
   "l9-fizzbuzzpop": {
-    "version": 1,
+    "version": 2,
     "steps": [
       {
-        "id": "the-rules",
+        "id": "the-finale-awaits",
         "graded": false,
         "points": 100,
         "minPoints": 20
-      },
-      {
-        "id": "capstone",
-        "graded": true,
-        "points": 100,
-        "minPoints": 20
       }
-    ]
+    ],
+    "mastery": {
+      "recallCount": 5,
+      "maxQuestions": 6
+    }
   }
 }

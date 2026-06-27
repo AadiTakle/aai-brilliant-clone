@@ -2291,6 +2291,20 @@ button.ghost:hover:not(:disabled) {
   color: var(--color-success);
 }
 
+/* Mastered: the gold payoff overrides the green "complete" look. */
+.results.is-mastered .results-eyebrow {
+  color: var(--color-currency);
+}
+
+.results.is-mastered .results-hero-icon {
+  background: color-mix(in srgb, var(--spark) 22%, var(--color-surface));
+  box-shadow: var(--glow-spark);
+}
+
+.results.is-mastered h1 {
+  color: var(--color-currency);
+}
+
 /* Results hero: lesson machine + the big spark payoff */
 .results-hero {
   display: flex;

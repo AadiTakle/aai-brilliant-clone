@@ -9,14 +9,15 @@ interface LessonDetailProps {
 }
 
 export function LessonDetail({ state, prevTitle, onStart }: LessonDetailProps) {
-  const { meta, index, done, total, unlocked, cta } = state
+  const { meta, index, done, total, unlocked, mastered, cta } = state
   return (
-    <div className="detail-body">
-      <span className="detail-icon" aria-hidden="true">
+    <div className={`detail-body${mastered ? ' is-mastered' : ''}`}>
+      <span className={`detail-icon${mastered ? ' is-mastered' : ''}`} aria-hidden="true">
         {meta.icon}
       </span>
       <p className="detail-eyebrow">Lesson {index + 1}</p>
       <h2 className="detail-title">{meta.shortTitle}</h2>
+      {mastered && <p className="detail-mastered-pill">{'\u2726'} Mastered</p>}
       <p className="detail-blurb">{meta.blurb}</p>
 
       <div className="detail-progress">

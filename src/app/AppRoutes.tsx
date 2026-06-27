@@ -1,6 +1,7 @@
 import { Route, Routes } from 'react-router-dom'
 import { CoursePage } from '../pages/CoursePage'
 import { LessonPage } from '../pages/LessonPage'
+import { MasteryPage } from '../pages/MasteryPage'
 import { ResultsPage } from '../pages/ResultsPage'
 import { CreateLessonPage } from '../pages/CreateLessonPage'
 import { AiLessonPage } from '../pages/AiLessonPage'
@@ -19,6 +20,14 @@ export function AppRoutes() {
         element={
           <RequireAuth>
             <LessonPage />
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/lessons/:lessonId/mastery"
+        element={
+          <RequireAuth>
+            <MasteryPage />
           </RequireAuth>
         }
       />

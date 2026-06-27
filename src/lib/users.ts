@@ -13,6 +13,9 @@ export interface UserProfile {
   currentStreak: number
   lastActiveDate: string | null
   completedLessons: string[]
+  /** Lessons whose Mastery Challenge the learner has cleared (gold on the map).
+   *  Server-owned, written only by the commitMasteryCompletion Cloud Function. */
+  masteredLessons: string[]
   /** ISO (YYYY-MM-DD) days on which the learner completed a full lesson. */
   activeDays: string[]
 }
@@ -37,6 +40,7 @@ export async function createUserProfile(
     currentStreak: 0,
     lastActiveDate: null,
     completedLessons: [],
+    masteredLessons: [],
     activeDays: [],
     createdAt: serverTimestamp(),
   }

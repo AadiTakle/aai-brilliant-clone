@@ -39,6 +39,7 @@ describe('[Phase 1] firestore.rules', () => {
     currentStreak: 0,
     lastActiveDate: null,
     completedLessons: [] as string[],
+    masteredLessons: [] as string[],
     activeDays: [] as string[],
   }
 
@@ -103,6 +104,14 @@ describe('[Phase 1] firestore.rules', () => {
       const alice = testEnv.authenticatedContext('alice').firestore()
       await assertFails(setDoc(doc(alice, 'rewards/alice_l1-talking-to-the-computer'), { awarded: {} }))
       await assertFails(getDoc(doc(alice, 'rewards/alice_l1-talking-to-the-computer')))
+    })
+  })
+
+  describe('masteryRewards/{rewardId}', () => {
+    it('is server-only — clients can neither read nor write the mastery ledger', async () => {
+      const alice = testEnv.authenticatedContext('alice').firestore()
+      await assertFails(setDoc(doc(alice, 'masteryRewards/alice_l9-fizzbuzzpop'), { sparks: 9999 }))
+      await assertFails(getDoc(doc(alice, 'masteryRewards/alice_l9-fizzbuzzpop')))
     })
   })
 

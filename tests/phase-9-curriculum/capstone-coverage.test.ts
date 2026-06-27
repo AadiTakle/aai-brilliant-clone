@@ -7,6 +7,7 @@ import {
   usesModuloSource,
 } from '../../src/lib/grading/constructCheck'
 import { FIZZBUZZPOP_REFERENCE } from './fixtures'
+import { getMasteryChallenge } from '../../src/content/mastery'
 
 const EXPECTED_ORDER = [
   'l1-talking-to-the-computer',
@@ -104,14 +105,16 @@ describe('[Phase 9] curriculum ordering + capstone contract', () => {
     expect(usesConditionalSource(FIZZBUZZPOP_REFERENCE)).toBe(true)
   })
 
-  it('the capstone step enforces every required construct and is graded', () => {
-    const capstone = getLessonOrThrow('l9-fizzbuzzpop')
-    const step = capstone.steps.find((s) => s.id === 'capstone')
-    expect(step?.type).toBe('python_sandbox')
-    if (step?.type !== 'python_sandbox') throw new Error('capstone is not a python sandbox')
-    expect(step.graded).toBe(true)
-    expect(step.config.requiredConstructs.sort()).toEqual(['conditional', 'loop', 'modulo'])
-    expect(step.config.testCases.length).toBeGreaterThan(0)
+  it('the capstone (now the L9 mastery Apply) enforces every required construct', () => {
+    // L9 is a Mastery Challenge: the graded FizzBuzzPop capstone moved into the
+    // L9 mastery spec's static Apply fallback (forceStaticApply — never AI).
+    const spec = getMasteryChallenge('l9-fizzbuzzpop')
+    expect(spec).not.toBeNull()
+    expect(spec?.forceStaticApply).toBe(true)
+    const apply = spec?.applyFallback[0]
+    expect(apply).toBeTruthy()
+    expect([...(apply?.requiredConstructs ?? [])].sort()).toEqual(['conditional', 'loop', 'modulo'])
+    expect((apply?.testCases ?? []).length).toBeGreaterThan(0)
   })
 })
 

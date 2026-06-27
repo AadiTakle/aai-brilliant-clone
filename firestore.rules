@@ -16,7 +16,8 @@ service cloud.firestore {
     function userShapeOk() {
       return request.resource.data.keys().hasOnly(
                ['displayName', 'email', 'totalPoints', 'currentStreak',
-                'lastActiveDate', 'completedLessons', 'activeDays', 'createdAt'])
+                'lastActiveDate', 'completedLessons', 'masteredLessons',
+                'activeDays', 'createdAt'])
              && request.resource.data.totalPoints is int
              && request.resource.data.totalPoints >= 0
              && request.resource.data.currentStreak is int
@@ -30,18 +31,20 @@ service cloud.firestore {
              && request.resource.data.currentStreak == 0
              && request.resource.data.lastActiveDate == null
              && request.resource.data.completedLessons == []
+             && request.resource.data.masteredLessons == []
              && request.resource.data.activeDays == [];
     }
 
-    // The Spark balance, streak, and completion history are SERVER-OWNED: they
-    // change only via the recordStepCompletion Cloud Function (Admin SDK, which
-    // bypasses these rules). A client update may edit profile fields but must
-    // leave every aggregate exactly as stored, so totalPoints can't be forged.
+    // The Spark balance, streak, completion history, and mastered-lesson set are
+    // SERVER-OWNED: they change only via the reward Cloud Functions (Admin SDK,
+    // which bypasses these rules). A client update may edit profile fields but
+    // must leave every aggregate exactly as stored, so they can't be forged.
     function aggregatesUnchanged() {
       return request.resource.data.totalPoints == resource.data.totalPoints
              && request.resource.data.currentStreak == resource.data.currentStreak
              && request.resource.data.lastActiveDate == resource.data.lastActiveDate
              && request.resource.data.completedLessons == resource.data.completedLessons
+             && request.resource.data.masteredLessons == resource.data.masteredLessons
              && request.resource.data.activeDays == resource.data.activeDays;
     }
 
@@ -63,6 +66,13 @@ service cloud.firestore {
     // SDK). Clients never read or write it; the balance they care about lives on
     // their user doc.
     match /rewards/{rewardId} {
+      allow read, write: if false;
+    }
+
+    // Server-only one-time Mastery Challenge ledger (written by
+    // commitMasteryCompletion via the Admin SDK). It guarantees the big mastery
+    // Spark award fires at most once per lesson, so clients can't touch it.
+    match /masteryRewards/{rewardId} {
       allow read, write: if false;
     }
 

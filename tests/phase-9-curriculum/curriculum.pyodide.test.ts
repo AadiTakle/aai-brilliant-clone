@@ -6,18 +6,27 @@ import { normalizeOutput } from '../../src/lib/grading/outputGrader'
 import { getLesson } from '../../src/content/loader'
 import type { CodeNode } from '../../src/lib/blocks/definitions'
 import { FIZZBUZZPOP_REFERENCE } from './fixtures'
+import { getMasteryChallenge } from '../../src/content/mastery'
 
 // [Phase 9] End-to-end checks under real Python. `npm run test:pyodide`.
+// L9's FizzBuzzPop capstone is now the L9 Mastery Challenge's static Apply
+// question (forceStaticApply — never AI). We grade the reference solution
+// against that authored Apply config.
 describe('[Phase 9] FizzBuzzPop capstone (Pyodide)', () => {
   beforeAll(async () => {
     await loadPyodideRunner()
   })
 
+  function capstoneApply() {
+    const spec = getMasteryChallenge('l9-fizzbuzzpop')
+    if (!spec) throw new Error('missing l9 mastery spec')
+    const apply = spec.applyFallback[0]
+    if (!apply) throw new Error('missing l9 apply fallback')
+    return apply
+  }
+
   function capstoneExpected(): string {
-    const lesson = getLesson('l9-fizzbuzzpop')!
-    const step = lesson.steps.find((s) => s.id === 'capstone')!
-    if (step.type !== 'python_sandbox') throw new Error('capstone missing')
-    return step.config.testCases[0].expectedStdout
+    return capstoneApply().testCases[0].expectedStdout
   }
 
   it('the reference solution produces exactly the capstone expected output', async () => {
@@ -27,11 +36,9 @@ describe('[Phase 9] FizzBuzzPop capstone (Pyodide)', () => {
   })
 
   it('the reference solution passes the graded capstone (constructs satisfied)', async () => {
-    const lesson = getLesson('l9-fizzbuzzpop')!
-    const step = lesson.steps.find((s) => s.id === 'capstone')!
-    if (step.type !== 'python_sandbox') throw new Error('capstone missing')
-    const res = await gradePython(FIZZBUZZPOP_REFERENCE, step.config.testCases, undefined, {
-      requiredConstructs: step.config.requiredConstructs,
+    const apply = capstoneApply()
+    const res = await gradePython(FIZZBUZZPOP_REFERENCE, apply.testCases, undefined, {
+      requiredConstructs: apply.requiredConstructs,
     })
     expect(res.passed).toBe(true)
     expect(res.missingConstructs).toEqual([])
@@ -43,11 +50,9 @@ describe('[Phase 9] FizzBuzzPop capstone (Pyodide)', () => {
       .split('\n')
       .map((line) => `print(${/^\d+$/.test(line) ? line : JSON.stringify(line)})`)
       .join('\n')
-    const lesson = getLesson('l9-fizzbuzzpop')!
-    const step = lesson.steps.find((s) => s.id === 'capstone')!
-    if (step.type !== 'python_sandbox') throw new Error('capstone missing')
-    const res = await gradePython(cheat, step.config.testCases, undefined, {
-      requiredConstructs: step.config.requiredConstructs,
+    const apply = capstoneApply()
+    const res = await gradePython(cheat, apply.testCases, undefined, {
+      requiredConstructs: apply.requiredConstructs,
     })
     expect(res.passed).toBe(false)
     expect(res.missingConstructs).toContain('loop')

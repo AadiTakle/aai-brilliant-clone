@@ -29,7 +29,7 @@ interface BodyProps {
   onGraded?: (result: { correct: boolean }) => void
 }
 
-function PythonSandboxBody({ title, config, onComplete, onGraded }: BodyProps) {
+export function PythonSandboxBody({ title, config, onComplete, onGraded }: BodyProps) {
   const editorRef = useRef<ReactCodeMirrorRef>(null)
   const theme = useResolvedTheme()
   const [code, setCode] = useState(config.starterCode)

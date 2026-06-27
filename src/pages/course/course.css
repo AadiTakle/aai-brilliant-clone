@@ -308,6 +308,106 @@
   stroke: rgba(255, 201, 60, 0.25);
 }
 
+/* Mastered: a gold ring + gold face with a star, plus a few floating sparkle
+   motes. Mirrors the .is-complete treatment but with the spark (gold) tokens. */
+.is-mastered .node-ring-fill {
+  stroke: var(--spark);
+}
+
+.is-mastered .node-face {
+  border-color: var(--spark);
+  background: radial-gradient(circle at 50% 40%, rgba(255, 201, 60, 0.3), rgba(255, 201, 60, 0.12));
+  box-shadow: 0 0 0 4px rgba(255, 201, 60, 0.2), 0 0 26px rgba(255, 201, 60, 0.5);
+}
+
+.node-star {
+  font-size: 1.5rem;
+  color: var(--spark);
+}
+
+.is-mastered .node-label {
+  color: var(--spark);
+}
+
+.node-motes {
+  position: absolute;
+  inset: -8px;
+  pointer-events: none;
+}
+
+.node-mote {
+  position: absolute;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--spark);
+  box-shadow: 0 0 8px 1px rgba(255, 201, 60, 0.7);
+  opacity: 0;
+  animation: node-mote-float 3.2s ease-in-out infinite;
+}
+
+.node-mote:nth-child(1) {
+  top: 6%;
+  left: 14%;
+  animation-delay: 0s;
+}
+
+.node-mote:nth-child(2) {
+  top: 16%;
+  right: 8%;
+  animation-delay: 1.1s;
+}
+
+.node-mote:nth-child(3) {
+  bottom: 8%;
+  left: 52%;
+  animation-delay: 2.2s;
+}
+
+@keyframes node-mote-float {
+  0%,
+  100% {
+    opacity: 0;
+    transform: translateY(5px) scale(0.6);
+  }
+  40% {
+    opacity: 1;
+    transform: translateY(-7px) scale(1);
+  }
+}
+
+/* Detail panel: gold accents when mastered. */
+.detail-icon.is-mastered {
+  filter: drop-shadow(0 2px 10px rgba(255, 201, 60, 0.55));
+}
+
+.detail-body.is-mastered .detail-title {
+  color: var(--spark);
+}
+
+.detail-mastered-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin: 0 0 var(--space-3);
+  padding: 0.2rem 0.7rem;
+  border-radius: 999px;
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink);
+  background: var(--spark);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .node-mote {
+    animation: none;
+    opacity: 0.85;
+  }
+}
+
 /* Keyboard focus on the round buttons. */
 .node-button:focus-visible {
   outline: none;

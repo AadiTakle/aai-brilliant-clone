@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { Link, useParams, useSearchParams } from 'react-router-dom'
 import { motion } from 'motion/react'
 import { db } from '../firebase/config'
 import { useAuth } from '../auth/useAuth'
@@ -49,8 +49,11 @@ function SparkShower() {
 
 export function ResultsPage() {
   const params = useParams()
+  const [search] = useSearchParams()
   const lessonId = params.lessonId ?? ''
   const { user, profile } = useAuth()
+  const mastered =
+    search.get('mastered') === '1' || Boolean(profile?.masteredLessons?.includes(lessonId))
   const lesson = getLesson(lessonId)
   const [progress, setProgress] = useState<LessonProgress | null>(null)
   const [loading, setLoading] = useState(true)
@@ -101,17 +104,25 @@ export function ResultsPage() {
   const meta = getLessonMeta(lesson.id, lesson.title)
   const lessons = listLessons()
   const idx = lessons.findIndex((l) => l.id === lesson.id)
-  const nextLesson = complete && idx >= 0 && idx < lessons.length - 1 ? lessons[idx + 1] : null
+  const nextLesson =
+    (complete || mastered) && idx >= 0 && idx < lessons.length - 1 ? lessons[idx + 1] : null
+
+  const celebrate = complete || mastered
 
   return (
-    <main className={`results${complete ? ' is-complete' : ''}`}>
-      {complete && <SparkShower />}
+    <main className={`results${complete ? ' is-complete' : ''}${mastered ? ' is-mastered' : ''}`}>
+      {celebrate && <SparkShower />}
 
       <header className="results-hero">
-        <span className={`results-hero-icon${complete ? ' is-energized' : ''}`} aria-hidden="true">
+        <span
+          className={`results-hero-icon${celebrate ? ' is-energized' : ''}`}
+          aria-hidden="true"
+        >
           {meta.icon}
         </span>
-        <p className="results-eyebrow">{complete ? 'Machine complete!' : 'Progress so far'}</p>
+        <p className="results-eyebrow">
+          {mastered ? 'Mastered! ✦' : complete ? 'Machine complete!' : 'Progress so far'}
+        </p>
         <h1>{meta.shortTitle}</h1>
       </header>
 

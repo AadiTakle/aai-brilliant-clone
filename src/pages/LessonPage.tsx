@@ -6,6 +6,7 @@ import { StepGauge } from '../components/StepGauge'
 import { SparkBurst } from '../components/SparkBurst'
 import { useCountUp } from '../components/useCountUp'
 import { getLessonMeta } from '../content/course'
+import { hasMasteryChallenge } from '../content/mastery'
 import { CURRENCY_GLYPH, CURRENCY_NAME } from '../components/Currency'
 import { useLessonProgress } from '../lib/progress/useLessonProgress'
 import { getStepProgress, isLessonComplete, pointsEarned } from '../lib/progress/model'
@@ -35,6 +36,18 @@ export function LessonPage() {
   const { lesson, step, isFirst, isLast, total } = location
   const lessonComplete = isLessonComplete(progress, lesson)
   const currentComplete = getStepProgress(progress, step.id).status === 'completed'
+  // Lessons with no graded steps (e.g. the L9 finale) can still finish once every
+  // step has been completed, so the mastery handoff isn't blocked.
+  const allStepsDone = lesson.steps.every(
+    (s) => getStepProgress(progress, s.id).status === 'completed',
+  )
+  const canFinish = lessonComplete || allStepsDone
+  // The finale is a Mastery Challenge: when this lesson has a mastery spec, Finish
+  // hands off to the challenge instead of going straight to results.
+  const masteryNext = hasMasteryChallenge(lesson.id)
+  const finishHref = masteryNext
+    ? `/lessons/${lessonId}/mastery`
+    : `/lessons/${lessonId}/results`
 
   const meta = getLessonMeta(lesson.id, lesson.title)
   const lessonNumber = listLessons().findIndex((l) => l.id === lesson.id) + 1
@@ -104,14 +117,14 @@ export function LessonPage() {
         </span>
         {isLast ? (
           <Link
-            to={`/lessons/${lessonId}/results`}
+            to={finishHref}
             className="lesson-finish btn-machine"
-            aria-disabled={!lessonComplete}
+            aria-disabled={!canFinish}
             onClick={(e) => {
-              if (!lessonComplete) e.preventDefault()
+              if (!canFinish) e.preventDefault()
             }}
           >
-            Finish
+            {masteryNext ? 'Begin Mastery ▸' : 'Finish'}
           </Link>
         ) : (
           <button

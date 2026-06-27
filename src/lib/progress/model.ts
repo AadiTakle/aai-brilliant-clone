@@ -1,6 +1,7 @@
 // Type-agnostic lesson progress model + pure reducers (Phase 6).
 
 import type { Lesson } from '../../content/schemas'
+import type { MasteryAttempt } from '../mastery/attempt'
 import { computeAwardedPoints } from './points'
 
 export type StepStatus = 'not_started' | 'in_progress' | 'completed'
@@ -19,6 +20,9 @@ export interface LessonProgress {
   lessonVersion: number
   currentStepIndex: number
   steps: Record<string, StepProgress>
+  /** In-progress Mastery Challenge state (client-owned, resume-safe). Absent
+   *  until the learner enters the challenge after the last step. */
+  mastery?: MasteryAttempt
 }
 
 export function emptyProgress(lessonVersion: number): LessonProgress {

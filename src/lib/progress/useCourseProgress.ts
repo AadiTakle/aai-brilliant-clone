@@ -19,8 +19,11 @@ export interface CourseLessonState {
   done: number
   total: number
   complete: boolean
+  /** The learner cleared this lesson's Mastery Challenge (gold on the map). */
+  mastered: boolean
   started: boolean
-  /** A lesson unlocks once the previous one is complete (the first is always open). */
+  /** A lesson unlocks once the previous one is mastered or (legacy) complete. The
+   *  first is always open. */
   unlocked: boolean
   /** Step index the CTA jumps to (resume where you left off, or restart to review). */
   targetIndex: number
@@ -37,8 +40,9 @@ export interface CourseState {
 }
 
 export function useCourseProgress(): CourseState {
-  const { user } = useAuth()
+  const { user, profile } = useAuth()
   const lessons = listLessons()
+  const masteredSet = new Set(profile?.masteredLessons ?? [])
   const [progressByLesson, setProgressByLesson] = useState<Record<string, LessonProgress>>({})
   const [loading, setLoading] = useState(true)
 
@@ -69,10 +73,13 @@ export function useCourseProgress(): CourseState {
 
   // Completion is computed first so unlock state can look at the previous lesson
   // without mutating a variable across the render's map() (a React lint rule).
+  // A lesson counts as "cleared" (for unlocking the next) when it is mastered OR
+  // (grandfathered) already complete — so existing progress is never re-locked.
   const completion = lessons.map((lesson) => {
     const progress = progressByLesson[lesson.id]
     return progress ? isLessonComplete(progress, lesson) : false
   })
+  const cleared = lessons.map((lesson, i) => completion[i] || masteredSet.has(lesson.id))
 
   const states: CourseLessonState[] = lessons.map((lesson, index) => {
     const progress = progressByLesson[lesson.id]
@@ -80,9 +87,11 @@ export function useCourseProgress(): CourseState {
     const done = progress ? completedCount(progress, lesson) : 0
     const resumeIndex = progress?.currentStepIndex ?? 0
     const complete = completion[index]
+    const mastered = masteredSet.has(lesson.id)
     const started = done > 0 || resumeIndex > 0
-    // The first lesson is always open; the rest unlock when the prior completes.
-    const unlocked = index === 0 || completion[index - 1]
+    // The first lesson is always open; the rest unlock when the prior is cleared.
+    const unlocked = index === 0 || cleared[index - 1]
+    const doneForCta = complete || mastered
     return {
       lesson,
       meta: getLessonMeta(lesson.id, lesson.title),
@@ -90,16 +99,17 @@ export function useCourseProgress(): CourseState {
       done,
       total,
       complete,
+      mastered,
       started,
       unlocked,
-      // Completed lessons restart from the beginning for review.
-      targetIndex: complete ? 0 : started ? resumeIndex : 0,
-      cta: lessonCtaLabel(complete, started),
+      // Cleared lessons restart from the beginning for review.
+      targetIndex: doneForCta ? 0 : started ? resumeIndex : 0,
+      cta: lessonCtaLabel(doneForCta, started),
     }
   })
 
-  const completedLessons = states.filter((s) => s.complete).length
-  const firstActive = states.find((s) => s.unlocked && !s.complete)
+  const completedLessons = states.filter((s) => s.complete || s.mastered).length
+  const firstActive = states.find((s) => s.unlocked && !s.complete && !s.mastered)
   const currentIndex = firstActive ? firstActive.index : Math.max(0, states.length - 1)
 
   return {

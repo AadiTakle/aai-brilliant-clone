@@ -6,9 +6,12 @@ import { useReducedMotion } from '../../lib/ui/motion'
 interface CheckpointProps {
   block: CheckpointBlock
   onComplete?: () => void
+  /** Fires on every Check with the result, so callers (e.g. the Mastery recall
+   *  stage) can record a first-try miss. Optional + additive. */
+  onResult?: (correct: boolean) => void
 }
 
-export function Checkpoint({ block, onComplete }: CheckpointProps) {
+export function Checkpoint({ block, onComplete, onResult }: CheckpointProps) {
   const reduced = useReducedMotion()
   const [selected, setSelected] = useState<number | null>(null)
   const [result, setResult] = useState<'correct' | 'incorrect' | null>(null)
@@ -21,9 +24,11 @@ export function Checkpoint({ block, onComplete }: CheckpointProps) {
     setAttempts((a) => a + 1)
     if (selected === block.answerIndex) {
       setResult('correct')
+      onResult?.(true)
       onComplete?.()
     } else {
       setResult('incorrect')
+      onResult?.(false)
     }
   }
 

@@ -4,9 +4,24 @@
 // move a learner's Spark balance are produced here, inside the Cloud Function,
 // where they cannot be forged.
 
-import type { BuiltinLessonMeta } from './builtinLessonMeta.js'
+import type { BuiltinLessonMeta, BuiltinMasteryMeta } from './builtinLessonMeta.js'
 
 const ATTEMPTS_TO_FLOOR = 5
+
+/** Sparks granted per correctly-answered mastery question (2x a normal step). */
+export const MASTERY_SPARKS_PER_QUESTION = 200
+
+/**
+ * Server-trusted Spark award for clearing a lesson's Mastery Challenge: the
+ * learner's reported correctCount, clamped to the lesson's authoritative max
+ * (recall + apply questions), times the per-question rate. Clamping is the
+ * anti-forge guard — a client can't claim more correct answers than exist.
+ */
+export function awardMastery(meta: BuiltinMasteryMeta, correctCount: number): number {
+  const safe = Number.isFinite(correctCount) ? Math.max(0, Math.floor(correctCount)) : 0
+  const capped = Math.min(safe, meta.maxQuestions)
+  return capped * MASTERY_SPARKS_PER_QUESTION
+}
 
 /** Linear points decay: full base on a clean solve, falling to minPoints by the
  *  5th wrong attempt. Mirrors src/lib/progress/points.ts. */

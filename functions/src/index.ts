@@ -4,9 +4,21 @@ import { initializeApp } from 'firebase-admin/app'
 import { getFirestore, FieldValue } from 'firebase-admin/firestore'
 import OpenAI from 'openai'
 import { buildRepairUserMessage, buildSystemPrompt, buildResponseSchema } from './lessonSpec.js'
+import {
+  MASTERY_SYSTEM_PROMPT,
+  buildMasteryUserMessage,
+  buildMasteryResponseSchema,
+} from './masterySpec.js'
 import { validateLessonStructure, MAX_LESSON_JSON_BYTES } from './validateLesson.js'
 import { BUILTIN_LESSON_META } from './builtinLessonMeta.js'
-import { awardStep, updateStreak, emptyLedger, type RewardLedger, type StreakState } from './rewards.js'
+import {
+  awardStep,
+  awardMastery,
+  updateStreak,
+  emptyLedger,
+  type RewardLedger,
+  type StreakState,
+} from './rewards.js'
 
 initializeApp()
 
@@ -171,6 +183,97 @@ export const generateCustomLesson = onCall(
   },
 )
 
+interface MasteryGenData {
+  lessonId?: string
+  struggledConcepts?: unknown
+  count?: unknown
+}
+
+// Stateless generation of a lesson's Mastery Challenge "Apply" questions, weighted
+// toward the concepts the learner just struggled with. Charges nothing — the
+// client validates each python_sandbox shape AND self-tests the model's reference
+// solution in Pyodide, falling back to the lesson's authored static Apply on any
+// failure. Mirrors generateCustomLesson's auth/App Check/rate-limit/error model.
+export const generateMasteryQuestions = onCall(
+  { secrets: [OPENAI_API_KEY], enforceAppCheck: true },
+  async (req) => {
+    if (!req.auth) {
+      throw new HttpsError('unauthenticated', 'Sign in to take the mastery challenge.')
+    }
+    const data = req.data as MasteryGenData
+    const lessonId = String(data?.lessonId ?? '').trim()
+    if (!lessonId || !BUILTIN_LESSON_META[lessonId]) {
+      throw new HttpsError('invalid-argument', 'Unknown lesson.')
+    }
+    const concepts = Array.isArray(data?.struggledConcepts)
+      ? (data.struggledConcepts as unknown[])
+          .filter((c): c is string => typeof c === 'string')
+          .slice(0, 12)
+      : []
+    if (concepts.length === 0) {
+      throw new HttpsError('invalid-argument', 'No concepts to review.')
+    }
+    const countRaw = Number(data?.count ?? 1)
+    const count = Number.isFinite(countRaw) ? Math.max(1, Math.min(2, Math.floor(countRaw))) : 1
+
+    await enforceGenerationRateLimit(req.auth.uid)
+
+    const messages: { role: 'system' | 'user'; content: string }[] = [
+      { role: 'system', content: MASTERY_SYSTEM_PROMPT },
+      { role: 'user', content: buildMasteryUserMessage(concepts, count) },
+    ]
+
+    const client = new OpenAI({ apiKey: OPENAI_API_KEY.value() })
+    let completion
+    try {
+      completion = await client.chat.completions.create({
+        model: MODEL,
+        messages,
+        response_format: {
+          type: 'json_schema',
+          json_schema: {
+            name: 'mastery_questions',
+            strict: false,
+            schema: buildMasteryResponseSchema(),
+          },
+        },
+      })
+    } catch (e) {
+      const err = e as { status?: number; code?: string }
+      if (err?.code === 'insufficient_quota') {
+        throw new HttpsError(
+          'resource-exhausted',
+          'The mastery challenge generator is unavailable right now (the AI account is out of credit).',
+        )
+      }
+      if (err?.status === 429) {
+        throw new HttpsError(
+          'resource-exhausted',
+          'The mastery challenge generator is busy right now. Please wait a moment and try again.',
+        )
+      }
+      throw new HttpsError(
+        'unavailable',
+        'The mastery challenge generator could not reach the AI service. Please try again.',
+      )
+    }
+
+    const finishReason = completion.choices[0]?.finish_reason
+    if (finishReason === 'length') {
+      return { accepted: false, reason: 'The generated questions were too long.' }
+    }
+    const text = completion.choices[0]?.message?.content ?? '{"accepted":false,"reason":"empty"}'
+    try {
+      return JSON.parse(text)
+    } catch {
+      throw new HttpsError(
+        'internal',
+        'The AI returned questions we could not read. Please try again.',
+      )
+    }
+  },
+)
+
 interface CommitData {
   lessonJson?: string
   prompt?: string
@@ -322,5 +425,96 @@ export const recordStepCompletion = onCall(async (req) => {
     tx.set(ledgerRef, { uid, lessonId, awarded: outcome.awarded, completed: lessonComplete, updatedAt: FieldValue.serverTimestamp() })
 
     return { pointsDelta: outcome.pointsDelta, lessonComplete, totalPoints: newTotal, currentStreak, awarded: outcome.pointsDelta > 0 }
+  })
+})
+
+interface MasteryCommitData {
+  lessonId?: string
+  correctCount?: unknown
+}
+
+// Server-authoritative Mastery Challenge completion. The client reports how many
+// questions it answered correctly; the server computes the Spark award (clamped
+// to the lesson's authoritative max so a client can't forge it), marks the lesson
+// `mastered`, and records a one-time ledger at masteryRewards/{uid}_{lessonId} so
+// the big award fires at most once. Mirrors recordStepCompletion's trust model.
+export const commitMasteryCompletion = onCall(async (req) => {
+  if (!req.auth) {
+    throw new HttpsError('unauthenticated', 'Sign in to record mastery.')
+  }
+  const uid = req.auth.uid
+  const data = req.data as MasteryCommitData
+  const lessonId = String(data?.lessonId ?? '')
+  const correctCountRaw = Number(data?.correctCount ?? 0)
+  const correctCount = Number.isFinite(correctCountRaw) ? Math.max(0, Math.floor(correctCountRaw)) : 0
+
+  const meta = BUILTIN_LESSON_META[lessonId]
+  // Only the built-in curriculum has authored mastery challenges. Custom AI
+  // lessons (and unknown lessons) cannot mint mastery Sparks.
+  if (!meta || !meta.mastery) {
+    return { sparksDelta: 0, mastered: false, awarded: false }
+  }
+  const masteryMeta = meta.mastery
+
+  const db = getFirestore()
+  const userRef = db.doc(`users/${uid}`)
+  const ledgerRef = db.doc(`masteryRewards/${uid}_${lessonId}`)
+  const today = new Date().toISOString().slice(0, 10) // server UTC day
+
+  return await db.runTransaction(async (tx) => {
+    const [userSnap, ledgerSnap] = await Promise.all([tx.get(userRef), tx.get(ledgerRef)])
+    const u = userSnap.data() ?? {}
+    const currentTotal = (u.totalPoints as number) ?? 0
+
+    // Idempotent: the mastery award fires at most once per lesson.
+    if (ledgerSnap.exists) {
+      return {
+        sparksDelta: 0,
+        mastered: true,
+        totalPoints: currentTotal,
+        currentStreak: (u.currentStreak as number) ?? 0,
+        awarded: false,
+      }
+    }
+
+    const sparks = awardMastery(masteryMeta, correctCount)
+    const newTotal = currentTotal + sparks
+
+    // Mastering a lesson also completes it and counts as today's activity, so the
+    // streak advances (important for L9, whose only completion signal is mastery).
+    const streakState: StreakState = {
+      currentStreak: (u.currentStreak as number) ?? 0,
+      lastActiveDate: (u.lastActiveDate as string | null) ?? null,
+    }
+    const nextStreak = updateStreak(streakState, today)
+    const masteredLessons: string[] = Array.isArray(u.masteredLessons) ? (u.masteredLessons as string[]) : []
+    const completedLessons: string[] = Array.isArray(u.completedLessons) ? (u.completedLessons as string[]) : []
+    const activeDays: string[] = Array.isArray(u.activeDays) ? (u.activeDays as string[]) : []
+
+    const userUpdate: Record<string, unknown> = {
+      totalPoints: newTotal,
+      currentStreak: nextStreak.currentStreak,
+      lastActiveDate: nextStreak.lastActiveDate,
+      masteredLessons: Array.from(new Set([...masteredLessons, lessonId])),
+      completedLessons: Array.from(new Set([...completedLessons, lessonId])),
+      activeDays: Array.from(new Set([...activeDays, today])),
+    }
+
+    tx.set(userRef, userUpdate, { merge: true })
+    tx.set(ledgerRef, {
+      uid,
+      lessonId,
+      correctCount,
+      sparks,
+      updatedAt: FieldValue.serverTimestamp(),
+    })
+
+    return {
+      sparksDelta: sparks,
+      mastered: true,
+      totalPoints: newTotal,
+      currentStreak: nextStreak.currentStreak,
+      awarded: sparks > 0,
+    }
   })
 })
