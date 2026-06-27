@@ -31,6 +31,9 @@ export function DailyChallengeEntry() {
 
   return (
     <Link to="/daily" className="daily-entry" data-done={done ? 'true' : 'false'}>
+      <span className="daily-entry-icon" aria-hidden="true">
+        {done ? '\u2713' : '\u21BB'}
+      </span>
       <span className="daily-entry-label">
         <span className="daily-entry-eyebrow">Daily Challenge</span>
         <span className="daily-entry-text">

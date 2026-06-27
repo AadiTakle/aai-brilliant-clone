@@ -107,6 +107,32 @@
   color: var(--cp-hue);
 }
 
+/* The score pops in on the results screen, echoing the app's reward motion
+   (feedback-pop / the results spark hero) without the finale's full shower. */
+.checkpoint-arena[data-phase='results'] .checkpoint-score-pct {
+  animation: checkpoint-score-pop 0.5s ease both;
+}
+
+@keyframes checkpoint-score-pop {
+  0% {
+    opacity: 0;
+    transform: scale(0.7);
+  }
+  60% {
+    transform: scale(1.06);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .checkpoint-arena[data-phase='results'] .checkpoint-score-pct {
+    animation: none;
+  }
+}
+
 .checkpoint-verdict {
   padding: 0.3rem 0.9rem;
   border-radius: 999px;
