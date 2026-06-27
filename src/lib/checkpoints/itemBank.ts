@@ -1,8 +1,8 @@
-// A PURE, concept-tagged "item bank" that samples questions from the existing
-// mastery specs. It is the shared foundation both Mastery Checkpoints and Daily
-// Challenges build on: checkpoints draw recall items for the concepts taught so
-// far; dailies (later) draw Apply items for spaced practice. Nothing here calls
-// AI or touches storage — it only reads the static, already-validated content.
+// A PURE, concept-tagged "item bank". It is the shared foundation both Mastery
+// Checkpoints and Daily Challenges build on: RECALL items come from the central
+// question bank (concept-keyed, easy to extend), while Apply items still come
+// from each lesson's mastery applyFallback. Nothing here calls AI or touches
+// storage — it only reads the static, already-validated content.
 
 import {
   getMasteryChallenge,
@@ -10,6 +10,7 @@ import {
   type MasteryRecallQuestion,
   type MasteryApplyQuestion,
 } from '../../content/mastery'
+import { bankQuestionsForConcept } from '../../content/questionBank'
 import { listLessons } from '../../content/loader'
 import type { Lesson } from '../../content/schemas'
 import type { CheckpointSpec } from '../../content/checkpoints/types'
@@ -25,22 +26,14 @@ function lessonsUpTo(uptoLessonId?: string): Lesson[] {
 }
 
 /**
- * Every recall MCQ tagged with `concept`, across the lessons up to and including
- * `uptoLessonId`, in lesson order. Pulled from each lesson's mastery spec.
+ * Every recall MCQ tagged with `concept`, drawn from the central question bank.
+ * The bank is neutral and concept-keyed (not lesson-scoped): WHICH concepts a
+ * checkpoint or daily may quiz is gated by the caller (a checkpoint's conceptPool
+ * / conceptsUpToLesson, or the daily's learnedConcepts), and every question for a
+ * concept is level-appropriate once that concept is taught.
  */
-export function recallItemsForConcept(
-  concept: MasteryConcept,
-  uptoLessonId?: string,
-): MasteryRecallQuestion[] {
-  const items: MasteryRecallQuestion[] = []
-  for (const lesson of lessonsUpTo(uptoLessonId)) {
-    const challenge = getMasteryChallenge(lesson.id)
-    if (!challenge) continue
-    for (const question of challenge.recall) {
-      if (question.concept === concept) items.push(question)
-    }
-  }
-  return items
+export function recallItemsForConcept(concept: MasteryConcept): MasteryRecallQuestion[] {
+  return bankQuestionsForConcept(concept)
 }
 
 /**
@@ -112,10 +105,10 @@ export interface CheckpointItem {
 }
 
 /**
- * Builds the full set of checkpoint questions for a spec: for each concept in
- * the pool, sample up to `perConceptCount` recall items drawn from the lessons
- * up to the checkpoint's `afterLessonId`, then shuffle the flattened result so
- * concepts are interleaved. All randomness flows through the injectable `rng`.
+ * Builds the full set of checkpoint questions for a spec: for each concept in the
+ * pool, sample up to `perConceptCount` recall items from the bank, randomize each
+ * one's answer order, then shuffle the flattened result so concepts are
+ * interleaved. All randomness flows through the injectable `rng`.
  */
 export function buildCheckpointItems(
   spec: CheckpointSpec,
@@ -123,9 +116,9 @@ export function buildCheckpointItems(
 ): CheckpointItem[] {
   const items: CheckpointItem[] = []
   for (const concept of spec.conceptPool) {
-    const pool = recallItemsForConcept(concept, spec.afterLessonId)
+    const pool = recallItemsForConcept(concept)
     for (const question of sampleN(pool, spec.perConceptCount, rng)) {
-      items.push({ concept, question })
+      items.push({ concept, question: shuffleChoices(question, rng) })
     }
   }
   return shuffle(items, rng)

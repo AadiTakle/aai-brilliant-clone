@@ -61,7 +61,7 @@ describe('[Phase 11] checkpoint specs are well-formed', () => {
   it('every pooled concept has at least one recall item available', () => {
     for (const spec of listCheckpoints()) {
       for (const concept of spec.conceptPool) {
-        expect(recallItemsForConcept(concept, spec.afterLessonId).length).toBeGreaterThanOrEqual(1)
+        expect(recallItemsForConcept(concept).length).toBeGreaterThanOrEqual(1)
       }
     }
   })
@@ -135,12 +135,13 @@ describe('[Phase 11] checkpoint scoring (answer-once)', () => {
 })
 
 describe('[Phase 11] checkpoint item bank', () => {
-  it('draws one item per available recall question, capped at perConceptCount', () => {
+  it('draws perConceptCount items for each pooled concept (from the bank)', () => {
     const spec = getCheckpoint('cp-control-flow')
     if (!spec) throw new Error('cp-control-flow spec missing')
     const items = buildCheckpointItems(spec, mulberry32(0xc0ffee))
-    // print/variable/modulo/comparison/conditional = 3 each; loop = 2; range = 1.
-    expect(items).toHaveLength(3 + 3 + 3 + 3 + 3 + 2 + 1) // 18
+    // Every pooled concept has >= perConceptCount (3) questions in the bank, so
+    // each contributes exactly perConceptCount: 7 concepts * 3 = 21.
+    expect(items).toHaveLength(spec.conceptPool.length * spec.perConceptCount)
   })
 
   it('is deterministic for a fixed seed and only draws pooled concepts', () => {

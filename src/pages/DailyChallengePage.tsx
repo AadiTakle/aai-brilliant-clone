@@ -4,7 +4,7 @@ import { db } from '../firebase/config'
 import { useAuth } from '../auth/useAuth'
 import { isoDay } from '../lib/progress/streak'
 import type { MasteryConcept, MasteryRecallQuestion } from '../content/mastery'
-import { recallItemsForConcept, sampleN, shuffle } from '../lib/checkpoints/itemBank'
+import { recallItemsForConcept, sampleN, shuffle, shuffleChoices } from '../lib/checkpoints/itemBank'
 import { AFK_MS, FAST_MS, learnedConcepts, selectDailyConcepts } from '../lib/daily/schedule'
 import { loadConcepts, loadTodayChallenge } from '../lib/daily/store'
 import type { DailyChallengeRecord } from '../lib/daily/store'
@@ -123,8 +123,10 @@ export function DailyChallengePage() {
       const concepts = selectDailyConcepts(store, learned, today, DAILY_COUNT)
       const drawn: DailyItem[] = []
       for (const concept of concepts) {
+        // One bank question per due concept, restricted to LEARNED concepts above,
+        // with its answer order randomized for display.
         for (const question of sampleN(recallItemsForConcept(concept), 1)) {
-          drawn.push({ concept, question })
+          drawn.push({ concept, question: shuffleChoices(question) })
         }
       }
       // Shuffle so the concepts interleave rather than arriving in concept order.
