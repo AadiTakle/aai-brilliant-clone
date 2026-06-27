@@ -57,16 +57,14 @@ export function updateConcept(
   const { correct, fast } = outcome
 
   let strength = correct ? prev.strength + (1 - prev.strength) * 0.2 : prev.strength * 0.5
-  let fastCorrectStreak = prev.fastCorrectStreak
+  // Default 0 resets the fast streak for the common cases (slow-correct,
+  // not-yet-strong, or wrong); only the fluency bonus below revives it.
+  let fastCorrectStreak = 0
 
   if (correct && fast && prev.strength >= 0.8) {
     // Fluency bonus: the ONLY place speed touches strength, and it only ever adds.
     strength = Math.min(1, strength + 0.05)
     fastCorrectStreak = prev.fastCorrectStreak + 1
-  } else {
-    // Slow-correct, not-yet-strong, or wrong: no speed effect at all; the fast
-    // streak ends. Strength keeps its correctness-only value from above.
-    fastCorrectStreak = 0
   }
 
   const intervalDays = nextInterval(prev.intervalDays, correct)
