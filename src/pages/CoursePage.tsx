@@ -4,6 +4,7 @@ import { useAuth } from '../auth/useAuth'
 import { useCourseProgress } from '../lib/progress/useCourseProgress'
 import { CourseCard } from '../components/course/CourseCard'
 import { CourseMap } from '../components/course/CourseMap'
+import { DailyChallengeEntry } from '../components/daily/DailyChallengeEntry'
 import './course/course.css'
 
 export function CoursePage() {
@@ -25,6 +26,7 @@ export function CoursePage() {
 
   return (
     <main className="course-page">
+      <DailyChallengeEntry />
       <AnimatePresence mode="wait" initial={false}>
         {showMap ? (
           <motion.div

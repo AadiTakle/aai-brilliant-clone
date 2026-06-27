@@ -1,0 +1,55 @@
+.daily-arena {
+  max-width: 640px;
+  margin: 0 auto;
+  padding: 2rem 1rem 4rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.daily-header {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.daily-eyebrow {
+  margin: 0;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 0.8rem;
+  font-weight: 700;
+  opacity: 0.7;
+}
+
+.daily-header h1 {
+  margin: 0;
+  font-size: 1.6rem;
+}
+
+.daily-progress {
+  margin: 0;
+  font-weight: 600;
+  opacity: 0.8;
+}
+
+.daily-nav {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.daily-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  align-items: flex-start;
+}
+
+.daily-note {
+  margin: 0;
+}
+
+.daily-strengthened ul {
+  margin: 0.25rem 0 0;
+  padding-left: 1.25rem;
+}
