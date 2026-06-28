@@ -12,6 +12,7 @@
 import type { Lesson } from '../../content/schemas'
 import type { AiGenerator, CustomLessonRequest } from './types'
 import {
+  extractReferenceSolutions,
   isWidgetRelatedErrors,
   selfTestLesson,
   validateGeneratedLesson,
@@ -28,8 +29,12 @@ export type GenerateOutcome =
 export interface GenerateOptions {
   /** Total API attempts before giving up. Defaults to 4 (2 standard + 2 simple). */
   maxAttempts?: number
-  /** Runtime self-test (Pyodide). Injectable for tests; defaults to the real one. */
-  selfTest?: (lesson: Lesson) => Promise<SelfTestResult>
+  /**
+   * Runtime self-test (Pyodide). Injectable for tests; defaults to the real one.
+   * Receives the per-step reference solutions captured from the raw model output
+   * (stripped by the strict parse) so it can verify each sandbox's ground truth.
+   */
+  selfTest?: (lesson: Lesson, referenceSolutions: Record<string, string>) => Promise<SelfTestResult>
   /** Progress callback for UI status text. */
   onAttempt?: (info: { attempt: number; isRepair: boolean; widgetMode: WidgetMode }) => void
 }
@@ -40,7 +45,9 @@ export async function generateValidatedLesson(
   options: GenerateOptions = {},
 ): Promise<GenerateOutcome> {
   const maxAttempts = Math.max(1, options.maxAttempts ?? 4)
-  const runSelfTest = options.selfTest ?? selfTestLesson
+  const runSelfTest =
+    options.selfTest ??
+    ((lesson: Lesson, refs: Record<string, string>) => selfTestLesson(lesson, undefined, refs))
 
   let widgetMode: WidgetMode = 'standard'
   let repair: CustomLessonRequest['repair']
@@ -54,7 +61,10 @@ export async function generateValidatedLesson(
 
     const validated = validateGeneratedLesson(result.lesson)
     if (validated.ok) {
-      const selfTest = await runSelfTest(validated.lesson)
+      // Capture the raw reference solutions BEFORE the strict parse drops them, so
+      // the self-test can prove each sandbox's ground truth actually works.
+      const referenceSolutions = extractReferenceSolutions(result.lesson)
+      const selfTest = await runSelfTest(validated.lesson, referenceSolutions)
       if (selfTest.ok) {
         return {
           kind: 'lesson',

@@ -3,12 +3,18 @@
 //   1. validateGeneratedLesson — strict Zod parse (the same `lessonSchema` the
 //      whole app uses) plus structural rules (step cap, unique ids, graded steps
 //      actually have something to grade).
-//   2. selfTestLesson — a best-effort runtime check that any fully-specified
-//      reference code (e.g. a Parsons solution) actually executes without error.
+//   2. selfTestLesson — a runtime check (Pyodide) that the lesson's GROUND TRUTH
+//      actually works: every python_sandbox's model-provided referenceSolution
+//      passes that step's OWN test cases AND constraints, every Parsons solution
+//      runs cleanly, and every runnable function_machine script executes.
 //
-// Note on limits: a `python_sandbox` whose answer the learner must type cannot be
-// auto-verified (we have no solution), so the gate focuses on what CAN be proven
-// broken. The strict schema parse is the primary safety net.
+// The referenceSolution is transport-only: it is captured from the raw model
+// output (extractReferenceSolutions) BEFORE the strict parse drops it, self-tested
+// here, and never persisted or shown to the learner — mirroring the mastery Apply
+// path (acceptApply.ts), where the solution lives on the generated payload but not
+// on the saved question. This is what gives every generated sandbox clear ground
+// truth: a step whose expected output is wrong or unsolvable fails the self-test
+// and is sent back through the repair/regenerate loop.
 
 import { z } from 'zod'
 import { lessonSchema, type Lesson } from '../../content/schemas'
@@ -32,6 +38,7 @@ import {
 import { buildFunctionMachineSource } from '../../problem-types/article/widgets/functionMachineSource'
 import { MAX_CUSTOM_LESSON_STEPS } from './cost'
 import { runPython, type PythonRunner } from '../pyodide/runner'
+import { gradePython, type PythonGradeResult } from '../grading/pythonGrader'
 
 export type ValidationResult = { ok: true; lesson: Lesson } | { ok: false; errors: string[] }
 
@@ -158,6 +165,31 @@ export function normalizeGeneratedLesson(raw: unknown): unknown {
     lesson.steps = lesson.steps.map(normalizeStep)
   }
   return lesson
+}
+
+/**
+ * Pulls each python_sandbox's `referenceSolution` (the model's GROUND TRUTH
+ * answer) out of the RAW generated lesson, keyed by step id. This MUST run before
+ * validateGeneratedLesson: the strict parse drops referenceSolution because it is
+ * deliberately NOT part of the persisted lesson schema (the same way the mastery
+ * path keeps the solution off the saved MasteryApplyQuestion). selfTestLesson then
+ * executes each one to prove the step is solvable and its expected output is real.
+ */
+export function extractReferenceSolutions(raw: unknown): Record<string, string> {
+  const out: Record<string, string> = {}
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return out
+  const steps = (raw as { steps?: unknown }).steps
+  if (!Array.isArray(steps)) return out
+  for (const step of steps) {
+    if (!step || typeof step !== 'object' || Array.isArray(step)) continue
+    const s = step as Record<string, unknown>
+    if (s.type !== 'python_sandbox' || typeof s.id !== 'string') continue
+    const config = s.config
+    if (!config || typeof config !== 'object' || Array.isArray(config)) continue
+    const ref = (config as Record<string, unknown>).referenceSolution
+    if (typeof ref === 'string') out[s.id] = ref
+  }
+  return out
 }
 
 /** True when validation/self-test failures look like widget or checkpoint formatting issues. */
@@ -349,15 +381,45 @@ export function validateParsonsStructure(
   return errors
 }
 
+/** Human-readable reason a sandbox's reference solution failed its own checks.
+ * Worded to avoid the tokens isWidgetRelatedErrors keys off, so a ground-truth
+ * failure routes to a normal repair pass rather than a widget-mode reset. */
+function describeSandboxFailure(grade: PythonGradeResult): string {
+  if (grade.missingConstructs.length > 0) {
+    return `reference solution does not use required construct(s): ${grade.missingConstructs.join(', ')}`
+  }
+  if (grade.disallowedUsed.length > 0) {
+    return `reference solution uses disallowed name(s): ${grade.disallowedUsed.join(', ')}`
+  }
+  if (grade.requiredMissing.length > 0) {
+    return `reference solution is missing required name(s): ${grade.requiredMissing.join(', ')}`
+  }
+  if (grade.hardcodedOutput) {
+    return 'reference solution prints the expected output as a literal instead of computing it'
+  }
+  const failedIndex = grade.results.findIndex((r) => !r.passed)
+  const r = grade.results[failedIndex]
+  const detail = r
+    ? r.error
+      ? `it errored: ${r.error}`
+      : `expected ${JSON.stringify(r.expected)} but printed ${JSON.stringify(r.actual)}`
+    : ''
+  return `reference solution does not pass its own test case ${failedIndex + 1}${detail ? ` (${detail})` : ''}`
+}
+
 /**
- * Best-effort runtime check. Currently runs each Parsons solution to ensure the
- * authored answer is syntactically valid and does not raise. Other gradable
- * steps are validated structurally (see validateGeneratedLesson) because their
- * intended learner solution is not known here.
+ * Runtime ground-truth check. For every python_sandbox, the model's
+ * referenceSolution must actually pass that step's OWN test cases and obey every
+ * constraint it imposed (constructs, required/disallowed names, no hardcoding) —
+ * this is what proves a generated sandbox is solvable and its expectedStdout is
+ * real. Parsons solutions and runnable function_machine scripts are executed too.
+ * A missing/empty referenceSolution is a failure (every sandbox needs ground
+ * truth). Failures flow back into the generator's repair/regenerate loop.
  */
 export async function selfTestLesson(
   lesson: Lesson,
   runner: PythonRunner = runPython,
+  referenceSolutions: Record<string, string> = {},
 ): Promise<SelfTestResult> {
   const failures: { stepId: string; reason: string }[] = []
   for (const step of lesson.steps) {
@@ -366,6 +428,29 @@ export async function selfTestLesson(
       const { error } = await runner(source)
       if (error) {
         failures.push({ stepId: step.id, reason: `Parsons solution does not run cleanly: ${error}` })
+      }
+    }
+    // GROUND TRUTH: run the model's referenceSolution against the step's own test
+    // cases + constraints. Mirrors the mastery Apply self-test (acceptApply.ts).
+    if (step.type === 'python_sandbox') {
+      const ref = referenceSolutions[step.id]
+      if (!ref || !ref.trim()) {
+        failures.push({
+          stepId: step.id,
+          reason: 'missing reference solution — cannot prove this step has correct ground truth',
+        })
+      } else {
+        const grade = await gradePython(ref, step.config.testCases, runner, {
+          requireLoop: step.config.requireLoop,
+          requiredConstructs: step.config.requiredConstructs,
+          disallowedNames: step.config.disallowedNames,
+          requiredNames: step.config.requiredNames,
+          forbidHardcodedOutput: step.config.forbidHardcodedOutput,
+          lenient: step.config.lenient,
+        })
+        if (!grade.passed) {
+          failures.push({ stepId: step.id, reason: describeSandboxFailure(grade) })
+        }
       }
     }
     // A runnable function_machine (one with `code`) actually executes its script

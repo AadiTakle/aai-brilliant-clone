@@ -1,5 +1,13 @@
 # Pyxel — Learn Python by Doing
 
+### ▶ Live app: **[aai-brilliant-clone.web.app](https://aai-brilliant-clone.web.app)**
+
+[![Live app](https://img.shields.io/badge/Live%20app-aai--brilliant--clone.web.app-2ea44f?style=for-the-badge)](https://aai-brilliant-clone.web.app)
+
+Runs entirely in your browser — no install needed. Sign up and start writing real Python in seconds.
+
+---
+
 **Pyxel is an interactive web app that teaches beginners how to write Python.** Inspired by Brilliant.org's "learn by doing" style, it guides newcomers (roughly 5th–7th graders, but anyone new to coding) from their very first `print()` all the way to writing **FizzBuzzPop** unaided — by writing and running **real Python in the browser**, not by watching videos or reading walls of text.
 
 Every lesson is a short sequence of hands-on steps with **instant feedback**. Learners earn a currency called **Sparks (✦)** and build a daily **streak** as they progress.

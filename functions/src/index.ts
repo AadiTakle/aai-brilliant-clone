@@ -9,7 +9,7 @@ import {
   buildMasteryUserMessage,
   buildMasteryResponseSchema,
 } from './masterySpec.js'
-import { validateLessonStructure, MAX_LESSON_JSON_BYTES } from './validateLesson.js'
+import { validateLessonStructure, stripReferenceSolutions, MAX_LESSON_JSON_BYTES } from './validateLesson.js'
 import { BUILTIN_LESSON_META } from './builtinLessonMeta.js'
 import { BUILTIN_CHECKPOINT_META, awardCheckpoint } from './checkpointMeta.js'
 import {
@@ -327,7 +327,10 @@ export const commitCustomLesson = onCall({ enforceAppCheck: true }, async (req) 
   const userRef = db.doc(`users/${uid}`)
   const lessonRef = db.collection(`users/${uid}/aiLessons`).doc()
   const id = lessonRef.id
-  const lessonWithId = { ...(lesson as object), id }
+  // Never persist the model's referenceSolution (ground truth used only for the
+  // client self-test). Strip it defensively in case a direct caller included it.
+  const sanitized = stripReferenceSolutions(lesson) as { title?: unknown; steps?: unknown }
+  const lessonWithId = { ...(sanitized as object), id }
   const simplifiedWidgets = Boolean((data as CommitData)?.simplifiedWidgets)
   const record = {
     id,

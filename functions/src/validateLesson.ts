@@ -190,6 +190,28 @@ function validateParsons(step: Record<string, unknown>, stepId: string, errors: 
 }
 
 /**
+ * Defensively removes any `referenceSolution` from python_sandbox configs before
+ * a lesson is persisted. The client already strips it (it is transport-only
+ * ground truth, not part of the saved lesson schema), but a caller hitting
+ * commitCustomLesson directly must NOT be able to store — and thereby serve to
+ * learners — the model's answer. Returns a new object; never mutates the input.
+ */
+export function stripReferenceSolutions(lesson: unknown): unknown {
+  if (!isPlainObject(lesson) || !Array.isArray(lesson.steps)) return lesson
+  return {
+    ...lesson,
+    steps: lesson.steps.map((step) => {
+      if (!isPlainObject(step) || step.type !== 'python_sandbox' || !isPlainObject(step.config)) {
+        return step
+      }
+      const config = { ...step.config }
+      delete config.referenceSolution
+      return { ...step, config }
+    }),
+  }
+}
+
+/**
  * Structural validation of a parsed lesson object. Returns ok:false with a list
  * of human-readable errors. Mirrors the gradable/feedback/indent rules enforced
  * client-side so the callable never charges for an unplayable lesson.

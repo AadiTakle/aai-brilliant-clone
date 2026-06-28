@@ -70,6 +70,8 @@ function buildMiniLesson(topic: string): unknown {
           starterCode: '# Print the word READY\n',
           lenient: true,
           successMessage: 'Nice \u2014 you ran a real program in your custom lesson!',
+          // Ground truth for the self-test (stripped before save, never shown).
+          referenceSolution: 'print("READY")',
           testCases: [
             {
               stdin: '',

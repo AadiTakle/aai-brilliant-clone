@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest'
-import { selfTestLesson, validateGeneratedLesson } from '../../src/lib/ai/validate'
+import {
+  extractReferenceSolutions,
+  selfTestLesson,
+  validateGeneratedLesson,
+} from '../../src/lib/ai/validate'
 import { MAX_CUSTOM_LESSON_STEPS } from '../../src/lib/ai/cost'
 
 function articleStep(id: string) {
@@ -20,6 +24,26 @@ function gradedPythonStep(id: string, testCases: unknown[]) {
   }
 }
 
+/** A python step carrying the model's referenceSolution (the new ground truth). */
+function gradedPythonStepWithRef(
+  id: string,
+  referenceSolution: string,
+  testCases: unknown[],
+  extra: Record<string, unknown> = {},
+) {
+  return {
+    id,
+    type: 'python_sandbox',
+    graded: true,
+    config: { prompt: 'Solve it', referenceSolution, testCases, ...extra },
+  }
+}
+
+/** A fake Pyodide runner that always returns the same stdout (no real Python). */
+function runnerReturning(stdout: string) {
+  return async () => ({ stdout, error: null })
+}
+
 function validLesson() {
   return {
     id: 'x',
@@ -36,6 +60,25 @@ describe('validateGeneratedLesson', () => {
   it('accepts a well-formed lesson', () => {
     const result = validateGeneratedLesson(validLesson())
     expect(result.ok).toBe(true)
+  })
+
+  it('strips referenceSolution from the validated (persisted) lesson', () => {
+    // referenceSolution is transport-only ground truth: it must never survive into
+    // the saved lesson (the answer would otherwise be shipped to the learner).
+    const raw = {
+      title: 'Has a ref',
+      version: 1,
+      steps: [
+        gradedPythonStepWithRef('p', 'print("READY")', [
+          { expectedStdout: 'READY', feedback: 'Print READY exactly.' },
+        ]),
+      ],
+    }
+    const result = validateGeneratedLesson(raw)
+    expect(result.ok).toBe(true)
+    if (!result.ok) return
+    const config = result.lesson.steps[0].config as Record<string, unknown>
+    expect(config.referenceSolution).toBeUndefined()
   })
 
   it('rejects content that is not even lesson-shaped', () => {
@@ -347,11 +390,106 @@ describe('validateGeneratedLesson', () => {
 
 describe('selfTestLesson', () => {
   it('passes when there is nothing runnable to verify', async () => {
-    const validated = validateGeneratedLesson(validLesson())
+    const lesson = { id: 'x', title: 'Article only', version: 1, steps: [articleStep('a')] }
+    const validated = validateGeneratedLesson(lesson)
     expect(validated.ok).toBe(true)
     if (!validated.ok) return
-    const result = await selfTestLesson(validated.lesson, async () => ({ stdout: '', error: null }))
+    const result = await selfTestLesson(validated.lesson, runnerReturning(''), {})
     expect(result.ok).toBe(true)
+  })
+
+  it('accepts a sandbox whose reference solution passes its own test cases', async () => {
+    const raw = {
+      id: 'x',
+      title: 'Ref ok',
+      version: 1,
+      steps: [
+        gradedPythonStepWithRef('p', 'print("READY")', [
+          { expectedStdout: 'READY', feedback: 'Print READY.' },
+        ]),
+      ],
+    }
+    const refs = extractReferenceSolutions(raw)
+    const validated = validateGeneratedLesson(raw)
+    expect(validated.ok).toBe(true)
+    if (!validated.ok) return
+    const result = await selfTestLesson(validated.lesson, runnerReturning('READY'), refs)
+    expect(result.ok).toBe(true)
+  })
+
+  it('rejects a sandbox whose reference solution prints the wrong output', async () => {
+    const raw = {
+      id: 'x',
+      title: 'Ref wrong output',
+      version: 1,
+      steps: [
+        gradedPythonStepWithRef('p', 'print("NOPE")', [
+          { expectedStdout: 'READY', feedback: 'Print READY.' },
+        ]),
+      ],
+    }
+    const refs = extractReferenceSolutions(raw)
+    const validated = validateGeneratedLesson(raw)
+    if (!validated.ok) throw new Error('expected a valid lesson')
+    const result = await selfTestLesson(validated.lesson, runnerReturning('NOPE'), refs)
+    expect(result.ok).toBe(false)
+    expect(result.failures[0]?.stepId).toBe('p')
+    expect(result.failures[0]?.reason).toMatch(/test case 1/)
+  })
+
+  it('rejects a sandbox whose reference solution misses a required construct', async () => {
+    // Output matches, but the reference never uses the loop the task demands — so a
+    // hardcoded learner answer could pass too. The gate catches that.
+    const raw = {
+      id: 'x',
+      title: 'Ref no loop',
+      version: 1,
+      steps: [
+        gradedPythonStepWithRef('p', 'print(15)', [{ expectedStdout: '15', feedback: 'Use a loop.' }], {
+          requiredConstructs: ['loop'],
+        }),
+      ],
+    }
+    const refs = extractReferenceSolutions(raw)
+    const validated = validateGeneratedLesson(raw)
+    if (!validated.ok) throw new Error('expected a valid lesson')
+    const result = await selfTestLesson(validated.lesson, runnerReturning('15'), refs)
+    expect(result.ok).toBe(false)
+    expect(result.failures[0]?.reason).toMatch(/required construct/)
+  })
+
+  it('rejects a sandbox whose reference solution hardcodes the expected output', async () => {
+    const raw = {
+      id: 'x',
+      title: 'Ref hardcoded',
+      version: 1,
+      steps: [
+        gradedPythonStepWithRef('p', 'print(30)', [{ expectedStdout: '30', feedback: 'Compute it.' }], {
+          forbidHardcodedOutput: true,
+        }),
+      ],
+    }
+    const refs = extractReferenceSolutions(raw)
+    const validated = validateGeneratedLesson(raw)
+    if (!validated.ok) throw new Error('expected a valid lesson')
+    const result = await selfTestLesson(validated.lesson, runnerReturning('30'), refs)
+    expect(result.ok).toBe(false)
+    expect(result.failures[0]?.reason).toMatch(/literal|hardcode/i)
+  })
+
+  it('rejects a sandbox that has no reference solution at all', async () => {
+    const raw = {
+      id: 'x',
+      title: 'No ref',
+      version: 1,
+      steps: [gradedPythonStep('p', [{ expectedStdout: 'READY', feedback: 'Print READY.' }])],
+    }
+    const refs = extractReferenceSolutions(raw)
+    const validated = validateGeneratedLesson(raw)
+    if (!validated.ok) throw new Error('expected a valid lesson')
+    const result = await selfTestLesson(validated.lesson, runnerReturning('READY'), refs)
+    expect(result.ok).toBe(false)
+    expect(result.failures[0]?.reason).toMatch(/missing reference solution/)
   })
 
   it('flags a Parsons solution that does not run', async () => {
@@ -433,5 +571,29 @@ describe('selfTestLesson', () => {
     }))
     expect(badResult.ok).toBe(false)
     expect(badResult.failures[0]?.stepId).toBe('fm')
+  })
+})
+
+describe('extractReferenceSolutions', () => {
+  it('captures each python_sandbox reference solution keyed by step id', () => {
+    const raw = {
+      title: 'Two sandboxes',
+      version: 1,
+      steps: [
+        articleStep('a'),
+        gradedPythonStepWithRef('p1', 'print(1)', [{ expectedStdout: '1', feedback: 'h' }]),
+        gradedPythonStepWithRef('p2', 'print(2)', [{ expectedStdout: '2', feedback: 'h' }]),
+      ],
+    }
+    expect(extractReferenceSolutions(raw)).toEqual({ p1: 'print(1)', p2: 'print(2)' })
+  })
+
+  it('returns an empty map when no sandbox carries a reference solution', () => {
+    const raw = {
+      title: 'No refs',
+      version: 1,
+      steps: [articleStep('a'), gradedPythonStep('p', [{ expectedStdout: 'X', feedback: 'h' }])],
+    }
+    expect(extractReferenceSolutions(raw)).toEqual({})
   })
 })

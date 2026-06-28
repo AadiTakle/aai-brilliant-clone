@@ -35,6 +35,7 @@ SCOPE — teach almost any SINGLE topic:
 
 GRADING — every problem that CAN be graded MUST be graded, with real criteria AND failure hints (match the quality of the built-in lessons):
 - Every "python_sandbox" step MUST set "graded": true and include at least one test case in "testCases". EVERY test case MUST include a "feedback" string that nudges the learner toward the fix WITHOUT revealing the answer. When the task is about a construct, also set "requiredConstructs" (any of "loop", "modulo", "conditional") or "requireLoop": true so a hardcoded output cannot pass. Only ask for output the learner can actually produce.
+- Every "python_sandbox" step MUST also include a correct "referenceSolution": runnable Python that, run with each test case's "stdin", prints EXACTLY that test case's "expectedStdout", genuinely uses every requiredConstruct, AND obeys every extra constraint (computes the answer when "forbidHardcodedOutput" is set, uses each requiredName, avoids each disallowedName). It is executed and self-tested against ALL of those BEFORE the lesson is shown; if it does not pass, the whole lesson is thrown away — so only set constraints your referenceSolution actually satisfies, and only ask for output the learner can really produce. This is GROUND TRUTH for the step; NEVER reveal it in "prompt" or "starterCode".
 - EXTRA CONSTRAINTS (optional — use them to stop shortcuts and force real practice, but only when a valid beginner solution still clearly exists):
   • "forbidHardcodedOutput": true — the answer must be COMPUTED, not typed in. A solution that prints the expected output as a literal (print(30), print("READY")) fails. Use this whenever the point is to calculate/derive a value, and make the prompt say "compute" / "store it in a variable and print that".
   • "requiredNames": [..] — identifiers the solution MUST use, e.g. ["total"] to require a named variable, or ["def"] to require defining a function. State the required name in the prompt.
@@ -122,7 +123,7 @@ function_machine — "input" must be a STRING (use "10" not 10; never an object)
   }
 }
 
-python_sandbox step (every testCase needs "feedback"):
+python_sandbox step (every testCase needs "feedback"; "referenceSolution" is REQUIRED and self-tested):
 {
   "id": "step5",
   "type": "python_sandbox",
@@ -130,6 +131,7 @@ python_sandbox step (every testCase needs "feedback"):
   "config": {
     "prompt": "Print the word READY on one line.",
     "starterCode": "# your code here",
+    "referenceSolution": "print(\\"READY\\")",
     "testCases": [
       {
         "expectedStdout": "READY\\n",
@@ -197,7 +199,7 @@ Return "accepted": true plus a "lesson". Allowed step "type" values:
      - code_tracer: { "code": [lines], "steps": [{ "line": 0-based index into code, "vars"?: {name: value}, "output"? }] }  // step through an authored trace of a small program
    For trace/code_tracer widgets you MUST author a correct, runnable trace: "line" is a 0-based index into "code", "vars" reflects values AFTER that line runs, and "output" is exactly what that line prints. Get every step right.
 
-2) "python_sandbox" (set "graded": true). config: { "prompt", "starterCode"?, "successMessage"?, "lenient"?: boolean, "requireLoop"?: boolean, "requiredConstructs"?: ["loop"|"modulo"|"conditional"], "disallowedNames"?: [string], "requiredNames"?: [string], "forbidHardcodedOutput"?: boolean, "testCases": [{ "stdin"?, "expectedStdout", "feedback" }] }. See the GRADING rules above — feedback on every test case is REQUIRED, and the EXTRA CONSTRAINTS are optional anti-shortcut guards.
+2) "python_sandbox" (set "graded": true). config: { "prompt", "starterCode"?, "successMessage"?, "lenient"?: boolean, "requireLoop"?: boolean, "requiredConstructs"?: ["loop"|"modulo"|"conditional"], "disallowedNames"?: [string], "requiredNames"?: [string], "forbidHardcodedOutput"?: boolean, "referenceSolution": string, "testCases": [{ "stdin"?, "expectedStdout", "feedback" }] }. See the GRADING rules above — feedback on every test case is REQUIRED, "referenceSolution" is REQUIRED and self-tested (it must pass its own test cases and constraints), and the EXTRA CONSTRAINTS are optional anti-shortcut guards.
 
 3) "parsons_problem" (set "graded": true). config: { "prompt", "lines": [{ "id", "code", "indent": 0-based level }] in the CORRECT order, "distractors"?: [{ "id", "code", "indent" }], "checkIndent"?: boolean, "orderHint", "indentHint" }. The "lines" must form a runnable Python solution WITHOUT calling input() — use literal values only. Indented lines (inside a for/if/def) use indent 1, 2, ... orderHint is REQUIRED; indentHint is REQUIRED whenever indentation is graded.
 
@@ -270,6 +272,10 @@ Example try/except lines array:
   { "id": "l3", "code": "except ValueError:", "indent": 0 },
   { "id": "l4", "code": "print(\\"That was not a valid number.\\")", "indent": 1 }
 ]`)
+  }
+
+  if (errors.some((e) => /reference solution|referenceSolution|ground truth/i.test(e))) {
+    hints.push(`REFERENCE SOLUTION FIX — every "python_sandbox" needs a "referenceSolution" that, when run, prints EXACTLY each test case's "expectedStdout" AND satisfies every constraint you set (requiredConstructs, requireLoop, requiredNames, disallowedNames, forbidHardcodedOutput). Trace it line by line: if its output does not match expectedStdout, fix the code OR the expectedStdout so they agree, and never set a constraint the solution cannot meet (e.g. requiredConstructs: ["loop"] but no loop, or forbidHardcodedOutput with a literal print). Keep the solution OUT of "prompt" and "starterCode".`)
   }
 
   const hintBlock = hints.length > 0 ? `\n\nFormat reminders:\n${hints.join('\n\n')}` : ''
@@ -494,9 +500,13 @@ export function buildResponseSchema(mode: WidgetMode = 'standard') {
           disallowedNames: { type: 'array', items: { type: 'string' } },
           requiredNames: { type: 'array', items: { type: 'string' } },
           forbidHardcodedOutput: { type: 'boolean' },
+          // GROUND TRUTH: runnable Python that prints each test case's expected
+          // output and obeys every constraint. Self-tested in Pyodide client-side
+          // and stripped before the lesson is persisted (never shown to learners).
+          referenceSolution: { type: 'string' },
           testCases: { type: 'array', items: testCase, minItems: 1 },
         },
-        required: ['prompt', 'testCases'],
+        required: ['prompt', 'testCases', 'referenceSolution'],
       },
     },
     required: ['id', 'type', 'graded', 'config'],
