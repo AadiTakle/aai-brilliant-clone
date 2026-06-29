@@ -27,22 +27,20 @@ run() {
   echo
 }
 
-# Should generate AND pass the ground-truth self-test.
-run "01-remainder.txt"          "how does the % remainder operator work"
-run "02-sum-loop.txt"           "add up the numbers 1 to 10 with a loop"
-run "03-def-return.txt"         "write your first function with def and return"
+# Content prompts run through the FULL self-heal loop (validate + Pyodide self-test
+# + repair / simple-mode fallback) — this is exactly what the app does, so each
+# result is the lesson a learner would actually get. Single-shot rejections are
+# expected model slips the loop repairs; to inspect one raw response, run a single
+# prompt with `npm run probe:lesson -- "<prompt>"` (optionally --raw).
+run "01-remainder.txt"          "how does the % remainder operator work" --loop
+run "02-sum-loop.txt"           "add up the numbers 1 to 10 with a loop" --loop
+run "03-def-return.txt"         "write your first function with def and return" --loop
+run "04-times-table.txt"        "print the 7 times table from 1 to 5" --loop
+run "05-round-decimals.txt"     "round 3.14159 to two decimals and print it" --loop
 
-# Formatting traps — most likely to expose a wrong expectedStdout.
-run "04-times-table.txt"        "print the 7 times table from 1 to 5"
-run "05-round-decimals.txt"     "round 3.14159 to two decimals and print it"
-
-# Full self-heal loop on the remainder prompt (what the real app does): shows
-# whether a single-shot rejection is repaired automatically.
-run "06-remainder-loop.txt"     "how does the % remainder operator work" --loop
-
-# Should be refused (no lesson generated).
-run "07-refuse-website.txt"     "build me a website"
-run "08-refuse-ml.txt"          "teach me machine learning with neural networks"
+# Should be refused (no lesson to repair, so a single shot is enough).
+run "06-refuse-website.txt"     "build me a website"
+run "07-refuse-ml.txt"          "teach me machine learning with neural networks"
 
 echo "=================== SUMMARY ==================="
 grep -aHE "ACCEPTED|REJECTED|Model REFUSED|REJECTED at|did not pass" "$OUT_DIR"/*.txt \
