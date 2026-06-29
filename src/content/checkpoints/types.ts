@@ -24,6 +24,10 @@ export const checkpointSpecSchema = z.object({
   conceptPool: z.array(z.enum(MASTERY_CONCEPTS)).min(1),
   // How many recall items to sample per concept (fewer when the bank is smaller).
   perConceptCount: z.number().int().default(3),
+  // Hard cap on the TOTAL questions shown. When the per-concept draw exceeds this,
+  // it is trimmed fairly (round-robin across concepts) so coverage stays balanced
+  // and the checkpoint never runs long.
+  maxQuestions: z.number().int().positive().default(15),
   // Overall fraction of questions that must be correct to pass.
   overallThreshold: z.number().min(0).max(1).default(0.8),
   // Per-concept floor as a ratio of how many of that concept were asked.

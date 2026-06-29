@@ -105,21 +105,38 @@ export interface CheckpointItem {
 }
 
 /**
- * Builds the full set of checkpoint questions for a spec: for each concept in the
- * pool, sample up to `perConceptCount` recall items from the bank, randomize each
- * one's answer order, then shuffle the flattened result so concepts are
- * interleaved. All randomness flows through the injectable `rng`.
+ * Builds the checkpoint questions for a spec: sample up to `perConceptCount`
+ * recall items per pooled concept (each one's answer order randomized), then trim
+ * the total to `spec.maxQuestions`. The trim is round-robin across concepts — take
+ * every concept's 1st item, then every concept's 2nd, and so on — so when the cap
+ * is smaller than the full pool, coverage stays balanced (every concept still
+ * appears, no whole concept is dropped) instead of slicing arbitrarily. The final
+ * order is shuffled so concepts are interleaved. All randomness flows through the
+ * injectable `rng`.
  */
 export function buildCheckpointItems(
   spec: CheckpointSpec,
   rng: () => number = Math.random,
 ): CheckpointItem[] {
-  const items: CheckpointItem[] = []
-  for (const concept of spec.conceptPool) {
-    const pool = recallItemsForConcept(concept)
-    for (const question of sampleN(pool, spec.perConceptCount, rng)) {
-      items.push({ concept, question: shuffleChoices(question, rng) })
+  // One shuffled bucket of candidate items per concept. The concept order itself
+  // is randomized so the extra slot (when the cap doesn't divide evenly) isn't
+  // always handed to the first concept in the pool.
+  const buckets = shuffle(spec.conceptPool, rng).map((concept) =>
+    sampleN(recallItemsForConcept(concept), spec.perConceptCount, rng).map(
+      (question): CheckpointItem => ({ concept, question: shuffleChoices(question, rng) }),
+    ),
+  )
+
+  const picked: CheckpointItem[] = []
+  const maxDepth = Math.max(0, ...buckets.map((b) => b.length))
+  for (let depth = 0; depth < maxDepth && picked.length < spec.maxQuestions; depth++) {
+    for (const bucket of buckets) {
+      if (depth < bucket.length) {
+        picked.push(bucket[depth])
+        if (picked.length >= spec.maxQuestions) break
+      }
     }
   }
-  return shuffle(items, rng)
+
+  return shuffle(picked, rng)
 }

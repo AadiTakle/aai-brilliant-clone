@@ -135,12 +135,23 @@ describe('[Phase 11] checkpoint scoring (answer-once)', () => {
 })
 
 describe('[Phase 11] checkpoint item bank', () => {
-  it('draws perConceptCount items for each pooled concept (from the bank)', () => {
+  it('caps the total at maxQuestions, trimmed fairly so every concept still appears', () => {
     const spec = getCheckpoint('cp-control-flow')
     if (!spec) throw new Error('cp-control-flow spec missing')
+    // 7 concepts * perConceptCount(3) = 21 available, more than the cap.
+    expect(spec.conceptPool.length * spec.perConceptCount).toBeGreaterThan(spec.maxQuestions)
     const items = buildCheckpointItems(spec, mulberry32(0xc0ffee))
-    // Every pooled concept has >= perConceptCount (3) questions in the bank, so
-    // each contributes exactly perConceptCount: 7 concepts * 3 = 21.
+    expect(items).toHaveLength(spec.maxQuestions)
+    expect(spec.maxQuestions).toBeLessThanOrEqual(15)
+    // Round-robin trim keeps balanced coverage: no whole concept is dropped.
+    expect(new Set(items.map((i) => i.concept)).size).toBe(spec.conceptPool.length)
+  })
+
+  it('returns the full per-concept draw when it is under the cap (cp-foundations)', () => {
+    const spec = getCheckpoint('cp-foundations')
+    if (!spec) throw new Error('cp-foundations spec missing')
+    const items = buildCheckpointItems(spec, mulberry32(0xc0ffee))
+    // 3 concepts * 3 = 9 <= maxQuestions, so nothing is trimmed.
     expect(items).toHaveLength(spec.conceptPool.length * spec.perConceptCount)
   })
 
