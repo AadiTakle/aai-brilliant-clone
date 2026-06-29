@@ -17,6 +17,9 @@ emulator-data/
 firebase-debug.log
 firebase-debug.*.log
 
+# Local AI probe outputs (scripts/probe-all.sh)
+probe-results/
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
