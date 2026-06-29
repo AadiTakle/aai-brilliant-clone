@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   extractReferenceSolutions,
+  isWidgetRelatedErrors,
   selfTestLesson,
   validateGeneratedLesson,
 } from '../../src/lib/ai/validate'
@@ -105,6 +106,20 @@ describe('validateGeneratedLesson', () => {
     const result = validateGeneratedLesson(lesson)
     expect(result.ok).toBe(false)
     if (!result.ok) expect(result.errors.join(' ')).toMatch(/test case/)
+  })
+
+  it('rejects a graded python step whose every test case has empty expected output', () => {
+    // A function-definition task that never prints: an empty submission would pass,
+    // so it has no real ground truth.
+    const lesson = {
+      id: 'x',
+      title: 'Vacuous',
+      version: 1,
+      steps: [gradedPythonStep('p', [{ expectedStdout: '', feedback: 'Define multiply.' }])],
+    }
+    const result = validateGeneratedLesson(lesson)
+    expect(result.ok).toBe(false)
+    if (!result.ok) expect(result.errors.join(' ')).toMatch(/non-empty expected output/)
   })
 
   it('accepts an article whose widget config is valid', () => {
@@ -595,5 +610,26 @@ describe('extractReferenceSolutions', () => {
       steps: [articleStep('a'), gradedPythonStep('p', [{ expectedStdout: 'X', feedback: 'h' }])],
     }
     expect(extractReferenceSolutions(raw)).toEqual({})
+  })
+})
+
+describe('isWidgetRelatedErrors', () => {
+  it('treats widget and checkpoint config issues as widget-related (simple mode can fix them)', () => {
+    expect(isWidgetRelatedErrors(['Step "a" panel 0 widget "type_sorter": bad config'])).toBe(true)
+    expect(
+      isWidgetRelatedErrors(['Step "a" panel 0 checkpoint: needs correct-answer feedback']),
+    ).toBe(true)
+  })
+
+  it('does NOT treat Parsons or sandbox ground-truth failures as widget-related (they should repair)', () => {
+    // Simple mode does not change Parsons/sandbox steps, so these must route to a
+    // repair pass instead of triggering a simple-mode regeneration.
+    expect(isWidgetRelatedErrors(['p: Parsons solution does not run cleanly: NameError'])).toBe(
+      false,
+    )
+    expect(
+      isWidgetRelatedErrors(['p: reference solution does not pass its own test case 2']),
+    ).toBe(false)
+    expect(isWidgetRelatedErrors(['p: missing reference solution'])).toBe(false)
   })
 })

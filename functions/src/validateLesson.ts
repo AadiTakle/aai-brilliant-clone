@@ -112,6 +112,13 @@ function validatePython(step: Record<string, unknown>, stepId: string, errors: s
       errors.push(`Step "${stepId}" test case ${caseIndex}: needs a failure hint (feedback).`)
     }
   })
+  // An all-empty expected output verifies nothing (an empty submission would pass),
+  // so require at least one case with real expected output for observable ground truth.
+  if (!testCases.some((tc) => isPlainObject(tc) && nonEmptyString(tc.expectedStdout))) {
+    errors.push(
+      `Step "${stepId}": a graded Python step needs at least one test case with non-empty expected output (an empty expected output cannot verify the learner's code).`,
+    )
+  }
 }
 
 /** Reconstructs the Python source a Parsons solution describes (order + indent). */

@@ -192,10 +192,18 @@ export function extractReferenceSolutions(raw: unknown): Record<string, string> 
   return out
 }
 
-/** True when validation/self-test failures look like widget or checkpoint formatting issues. */
+/**
+ * True when failures look like WIDGET/checkpoint config issues — the only kind
+ * that switching to `simple` widget mode can actually resolve (it restricts the
+ * article widget vocabulary). Parsons indentation/runtime errors and sandbox
+ * ground-truth failures are deliberately NOT matched here: simple mode does not
+ * change those step types, so they belong in a normal repair pass (feed the
+ * exact error back and fix it in place) rather than triggering a full
+ * simple-mode regeneration that discards otherwise-good content.
+ */
 export function isWidgetRelatedErrors(errors: string[]): boolean {
   return errors.some((e) =>
-    /widget|function_machine|checkpoint.*feedback|cases\.\d+\.(input|output)|panel \d+ widget|Parsons (line|first line|solution)|IndentationError/i.test(
+    /widget|function_machine|checkpoint.*feedback|cases\.\d+\.(input|output)|panel \d+ widget/i.test(
       e,
     ),
   )
@@ -248,6 +256,17 @@ export function validateGeneratedLesson(raw: unknown): ValidationResult {
           errors.push(`Step "${step.id}" test case ${caseIndex}: needs a failure hint (feedback).`)
         }
       })
+      // A test case that expects no output verifies nothing — any program that
+      // prints nothing (even an empty submission) would pass. Require at least one
+      // case with real expected output so the step has observable ground truth.
+      if (
+        step.config.testCases.length > 0 &&
+        !step.config.testCases.some((tc) => tc.expectedStdout.trim().length > 0)
+      ) {
+        errors.push(
+          `Step "${step.id}": a graded Python step needs at least one test case with non-empty expected output (an empty expected output cannot verify the learner's code — make the task print a result).`,
+        )
+      }
     }
     if (step.type === 'parsons_problem') {
       if (!step.graded) {
