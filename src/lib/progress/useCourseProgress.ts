@@ -26,9 +26,11 @@ export interface CourseLessonState {
   /** A lesson unlocks once the previous one is mastered or (legacy) complete AND
    *  any gating Mastery Checkpoint has been passed. The first is always open. */
   unlocked: boolean
-  /** When a Mastery Checkpoint gates this lesson (and the learner isn't
-   *  grandfathered past it), describes the barrier so the map can render it.
-   *  `available` = reachable now (previous lesson cleared) but not yet passed. */
+  /** When a Mastery Checkpoint gates this lesson, describes it so the map can
+   *  render the station — including AFTER it's cleared, where it stays visible as
+   *  a passed, revisitable node. `passed` is true once the checkpoint is passed OR
+   *  the learner is grandfathered past it; `available` = reachable now (previous
+   *  lesson cleared) but not yet passed. */
   gatedBy?: { id: string; title: string; passed: boolean; available: boolean }
   /** Step index the CTA jumps to (resume where you left off, or restart to review). */
   targetIndex: number
@@ -114,15 +116,18 @@ export function useCourseProgress(): CourseState {
     // AND any gating checkpoint is passed.
     const prevCleared = index === 0 || cleared[index - 1]
     const unlocked = prevCleared && checkpointClear
-    const gatedBy =
-      gate && !grandfathered
-        ? {
-            id: gate.id,
-            title: gate.title,
-            passed: passed.has(gate.id),
-            available: prevCleared && !passed.has(gate.id),
-          }
-        : undefined
+    // Surface the checkpoint for the map whenever this lesson has one — including
+    // after the learner is past it — so a cleared gate stays visible as a passed,
+    // revisitable node instead of vanishing. A grandfathered learner (already
+    // cleared the gated lesson) counts as passed for display.
+    const gatedBy = gate
+      ? {
+          id: gate.id,
+          title: gate.title,
+          passed: passed.has(gate.id) || grandfathered,
+          available: prevCleared && !passed.has(gate.id) && !grandfathered,
+        }
+      : undefined
     const doneForCta = complete || mastered
     return {
       lesson,

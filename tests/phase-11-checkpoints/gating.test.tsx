@@ -132,9 +132,10 @@ describe('[Phase 11] checkpoint gating in useCourseProgress', () => {
     expect(gated.gatedBy?.passed).toBe(true)
   })
 
-  it('grandfathers a learner who already completed the gated lesson (never re-locks)', async () => {
+  it('grandfathers a learner who already completed the gated lesson (never re-locks, shows it passed)', async () => {
     // The gated lesson is already complete via legacy step progress, but the
-    // checkpoint was never passed — it must stay unlocked and show no barrier.
+    // checkpoint was never explicitly passed — it must stay unlocked, and the
+    // checkpoint stays on the map as a passed, non-blocking node to revisit.
     loadLessonProgress.mockImplementation(async (_db, _uid, lessonId) =>
       lessonId === GATED_LESSON ? completeProgress(GATED_LESSON) : null,
     )
@@ -146,6 +147,7 @@ describe('[Phase 11] checkpoint gating in useCourseProgress', () => {
     const gated = result.current.lessons[gatedIndex]
     expect(gated.complete).toBe(true)
     expect(gated.unlocked).toBe(true)
-    expect(gated.gatedBy).toBeUndefined()
+    expect(gated.gatedBy?.passed).toBe(true)
+    expect(gated.gatedBy?.available).toBe(false)
   })
 })
