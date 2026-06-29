@@ -264,5 +264,14 @@ export function validateLessonStructure(lesson: unknown): LessonValidation {
     errors.push('Every step needs a unique id.')
   }
 
+  // Must contain hands-on coding (also catches a sandbox misplaced outside the
+  // steps array, which would otherwise leave a lesson of only articles).
+  const hasCodingStep = steps.some(
+    (s) => isPlainObject(s) && (s.type === 'python_sandbox' || s.type === 'parsons_problem'),
+  )
+  if (!hasCodingStep) {
+    errors.push('A lesson must include at least one hands-on coding step (a python_sandbox or parsons_problem).')
+  }
+
   return errors.length > 0 ? { ok: false, errors } : { ok: true }
 }

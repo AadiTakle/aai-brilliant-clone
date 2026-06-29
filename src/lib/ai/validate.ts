@@ -333,6 +333,18 @@ export function validateGeneratedLesson(raw: unknown): ValidationResult {
     }
   }
 
+  // Every lesson must END in hands-on coding (the product's core promise). Enforce
+  // that it contains at least one coding step — this also catches a model that
+  // misplaces the sandbox outside the lesson, leaving only articles behind.
+  const hasCodingStep = lesson.steps.some(
+    (s) => s.type === 'python_sandbox' || s.type === 'parsons_problem',
+  )
+  if (!hasCodingStep) {
+    errors.push(
+      'A lesson must include at least one hands-on coding step (a python_sandbox or parsons_problem).',
+    )
+  }
+
   if (errors.length > 0) return { ok: false, errors }
   return { ok: true, lesson }
 }

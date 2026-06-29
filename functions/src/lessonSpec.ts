@@ -206,6 +206,7 @@ Return "accepted": true plus a "lesson". Allowed step "type" values:
 
 RULES:
 - Incorrect-answer feedback must guide toward the fix and NEVER reveal the answer.
+- In any runnable code (a function_machine "code", a sandbox "referenceSolution", Parsons lines), NEVER name a function or variable the same as a Python builtin you also call — round, sum, len, list, str, int, max, min, type, print, etc. Shadowing it breaks the call (e.g. def round(n): return round(n, 2) raises "round() takes 1 positional argument but 2 were given"). Use a distinct name like round_two.
 - Keep all prose short and friendly.
 - Output JSON ONLY, matching the provided schema.`
 

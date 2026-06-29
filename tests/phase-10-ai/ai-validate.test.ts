@@ -6,6 +6,7 @@ import {
   validateGeneratedLesson,
 } from '../../src/lib/ai/validate'
 import { MAX_CUSTOM_LESSON_STEPS } from '../../src/lib/ai/cost'
+import { lessonSchema } from '../../src/content/schemas'
 
 function articleStep(id: string) {
   return {
@@ -120,6 +121,20 @@ describe('validateGeneratedLesson', () => {
     const result = validateGeneratedLesson(lesson)
     expect(result.ok).toBe(false)
     if (!result.ok) expect(result.errors.join(' ')).toMatch(/non-empty expected output/)
+  })
+
+  it('rejects a lesson with no hands-on coding step', () => {
+    // Catches a model that emits only articles (e.g. when it misplaces the sandbox
+    // outside the lesson object).
+    const lesson = {
+      id: 'x',
+      title: 'Articles only',
+      version: 1,
+      steps: [articleStep('a'), articleStep('b')],
+    }
+    const result = validateGeneratedLesson(lesson)
+    expect(result.ok).toBe(false)
+    if (!result.ok) expect(result.errors.join(' ')).toMatch(/coding step/)
   })
 
   it('accepts an article whose widget config is valid', () => {
@@ -405,11 +420,15 @@ describe('validateGeneratedLesson', () => {
 
 describe('selfTestLesson', () => {
   it('passes when there is nothing runnable to verify', async () => {
-    const lesson = { id: 'x', title: 'Article only', version: 1, steps: [articleStep('a')] }
-    const validated = validateGeneratedLesson(lesson)
-    expect(validated.ok).toBe(true)
-    if (!validated.ok) return
-    const result = await selfTestLesson(validated.lesson, runnerReturning(''), {})
+    // Parse directly: an article-only lesson exercises selfTestLesson in isolation
+    // (validateGeneratedLesson would separately reject it for lacking a coding step).
+    const lesson = lessonSchema.parse({
+      id: 'x',
+      title: 'Article only',
+      version: 1,
+      steps: [articleStep('a')],
+    })
+    const result = await selfTestLesson(lesson, runnerReturning(''), {})
     expect(result.ok).toBe(true)
   })
 
@@ -569,18 +588,19 @@ describe('selfTestLesson', () => {
         },
       ],
     }
-    const validated = validateGeneratedLesson(lesson)
-    expect(validated.ok).toBe(true)
-    if (!validated.ok) return
+    // Parse directly: this lesson is intentionally article-only to exercise the
+    // function_machine self-test in isolation (validateGeneratedLesson would
+    // separately reject it for lacking a coding step).
+    const parsed = lessonSchema.parse(lesson)
 
     // The exact source the widget would run is handed to the runner.
-    const okResult = await selfTestLesson(validated.lesson, async (src) => {
+    const okResult = await selfTestLesson(parsed, async (src) => {
       expect(src).toContain('__fm_out = square(4)')
       return { stdout: '16', error: null }
     })
     expect(okResult.ok).toBe(true)
 
-    const badResult = await selfTestLesson(validated.lesson, async () => ({
+    const badResult = await selfTestLesson(parsed, async () => ({
       stdout: '',
       error: "NameError: name 'sqaure' is not defined",
     }))
